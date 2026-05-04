@@ -1,0 +1,12 @@
+[
+  {
+    "id": "example-buffer-first",
+    "createdAt": "2026-05-04T00:00:00Z",
+    "title": "Prioritize emergency buffer before investing",
+    "decision": "Keep monthly surplus in buffer until target is reached.",
+    "status": "planned",
+    "amountDkk": 5000,
+    "tags": ["buffer", "strategy"],
+    "rationale": "Reduces short-term risk before increasing investment exposure."
+  }
+]

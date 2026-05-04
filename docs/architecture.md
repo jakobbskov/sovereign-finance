@@ -95,3 +95,27 @@ The architecture should remain:
 - easy to back up
 - easy to debug
 - easy to evolve
+
+## v0.3 implementation baseline
+
+The repository now contains a minimal runnable application structure.
+
+### Runtime files
+
+- `app.py` - Flask application and API routes
+- `static/index.html` - minimal user interface
+- `static/app.js` - frontend interaction logic
+- `data/decisions.example.json` - non-private example data
+- `tests/test_app_contract.py` - API contract tests
+
+### API surface
+
+Current API routes:
+
+- `GET /api/health`
+- `GET /api/decisions`
+- `POST /api/decisions`
+
+### Design constraint
+
+The decision history feature is intentionally narrow. It records structured financial decisions, but does not import bank data, connect to external APIs, or store real financial records in the repository.
