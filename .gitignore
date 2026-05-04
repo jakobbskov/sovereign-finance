@@ -38,3 +38,16 @@ temp/
 
 # Git hygiene
 *.orig
+
+# Sovereign Finance runtime data
+data/*.json
+!data/*.example.json
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Keep example environment file tracked
+!.env.example

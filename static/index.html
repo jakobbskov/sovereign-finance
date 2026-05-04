@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <title>Sovereign Finance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.5;
+    }
+
+    header {
+      margin-bottom: 2rem;
+    }
+
+    form, .decision {
+      border: 1px solid currentColor;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-top: 0.75rem;
+      font-weight: 600;
+    }
+
+    input, textarea, select, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.65rem;
+      margin-top: 0.25rem;
+      font: inherit;
+    }
+
+    button {
+      margin-top: 1rem;
+      cursor: pointer;
+    }
+
+    .meta {
+      opacity: 0.75;
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: #b00020;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sovereign Finance</h1>
+    <p>Beslutningshistorik for økonomiske scenarier og prioriteringer.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Gem beslutning</h2>
+      <form id="decisionForm">
+        <label for="title">Titel</label>
+        <input id="title" name="title" required>
+
+        <label for="decision">Beslutning</label>
+        <textarea id="decision" name="decision" rows="4" required></textarea>
+
+        <label for="amountDkk">Beløb, kr.</label>
+        <input id="amountDkk" name="amountDkk" inputmode="decimal">
+
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="planned">Planlagt</option>
+          <option value="active">Aktiv</option>
+          <option value="done">Færdig</option>
+          <option value="rejected">Afvist</option>
+        </select>
+
+        <label for="tags">Tags, kommasepareret</label>
+        <input id="tags" name="tags" placeholder="buffer, investering, køb">
+
+        <label for="rationale">Begrundelse</label>
+        <textarea id="rationale" name="rationale" rows="3"></textarea>
+
+        <button type="submit">Gem beslutning</button>
+      </form>
+      <p id="message"></p>
+    </section>
+
+    <section>
+      <h2>Historik</h2>
+      <div id="decisions"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

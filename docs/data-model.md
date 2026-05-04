@@ -115,3 +115,41 @@ Future versions of this document may include:
 - rule configuration examples
 - strategy definitions
 - example financial scenarios
+
+## v0.3 concrete data file: decisions.json
+
+Runtime decision history is stored outside Git in:
+
+`data/decisions.json`
+
+The repository only includes:
+
+`data/decisions.example.json`
+
+### Decision object
+
+Example shape:
+
+    {
+      "id": "decision-example",
+      "createdAt": "2026-05-04T00:00:00Z",
+      "title": "Prioritize emergency buffer before investing",
+      "decision": "Keep monthly surplus in buffer until target is reached.",
+      "status": "planned",
+      "amountDkk": 5000,
+      "tags": ["buffer", "strategy"],
+      "rationale": "Reduces short-term risk before increasing investment exposure."
+    }
+
+### Status values
+
+Allowed status values:
+
+- `planned`
+- `active`
+- `done`
+- `rejected`
+
+### Repository boundary
+
+`data/*.json` is ignored by Git, except example files. Real financial records must remain runtime data only.

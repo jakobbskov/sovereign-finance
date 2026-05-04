@@ -94,3 +94,33 @@ Possible future improvements include:
 - automated backups
 - health monitoring
 - environment templates
+
+## v0.3 local runtime
+
+The application can be run locally from the repository root:
+
+    python3 app.py
+
+Default local address:
+
+`http://127.0.0.1:5055`
+
+### Environment variables
+
+See `.env.example`.
+
+- `SOVEREIGN_FINANCE_DATA_DIR`
+- `SOVEREIGN_FINANCE_HOST`
+- `SOVEREIGN_FINANCE_PORT`
+
+### Sanity checks
+
+    python3 -m py_compile app.py
+    node --check static/app.js
+    python3 -m unittest discover -s tests -v
+
+### Production note
+
+Production deployment should place runtime data outside Git and use the configured data directory, for example:
+
+`/opt/sovereign-finance/data`
