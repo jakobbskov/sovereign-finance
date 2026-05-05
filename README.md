@@ -48,7 +48,9 @@ The backend and runtime structure should be documented further as the repository
 
 ### Data
 
-The application uses structured internal data and rule-based logic. The exact live data model should be documented in more detail in `docs/data-model.md`.
+The application uses structured internal data and rule-based logic. The exact live data model is documented in more detail in `docs/data-model.md`.
+
+Sovereign Finance currently uses one shared dataset per deployment. Login controls access to the app, but does not create separate budgets or private financial data per user. See `docs/data-auth-boundary-audit.md` for the current auth/data boundary.
 
 ## Expected functional scope
 
