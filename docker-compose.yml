@@ -1,0 +1,14 @@
+services:
+  sovereign-finance:
+    build: .
+    container_name: sovereign-finance
+    environment:
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY}
+      FINANCE_PASSWORD: ${FINANCE_PASSWORD}
+      COOKIE_SECURE: ${COOKIE_SECURE}
+    volumes:
+      - /opt/sovereign-finance/data:/app/data
+      - /opt/sovereign-finance/static:/app/static:ro
+    restart: unless-stopped
+    ports:
+      - "5155:5055"

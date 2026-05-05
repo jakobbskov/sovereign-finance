@@ -119,3 +119,17 @@ Current API routes:
 ### Design constraint
 
 The decision history feature is intentionally narrow. It records structured financial decisions, but does not import bank data, connect to external APIs, or store real financial records in the repository.
+
+## Live runtime reconciliation notes
+
+The current production runtime in `/opt/sovereign-finance` has been reconciled into the repository as the baseline for future work.
+
+Known technical debt imported from the live runtime:
+
+- `static/app.js` is large and patch-heavy and should not be expanded further without isolating new logic.
+- `app.py` contains historical compatibility layers and duplicated route registrations.
+- `/api/strategies` currently has two GET handlers registered.
+- `/api/strategy/params` currently has two POST handlers registered.
+- Runtime data, secrets, backups, snapshots, and `.bak` files remain outside Git.
+
+This reconciliation commit is intentionally a snapshot of the live application state, not a refactor.
