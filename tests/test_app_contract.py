@@ -104,6 +104,23 @@ class FinanceLiveEndpointRegressionTest(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "unauthorized")
 
 
+    def test_static_app_asset_is_available_without_auth(self):
+        client = self.app_module.app.test_client()
+
+        response = client.get("/static/app.js")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("javascript", response.headers.get("Content-Type", "").lower())
+
+    def test_static_format_helper_is_available_without_auth(self):
+        client = self.app_module.app.test_client()
+
+        response = client.get("/static/sf-format.js")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("javascript", response.headers.get("Content-Type", "").lower())
+
+
     def test_login_accepts_configured_password(self):
         client = self.app_module.app.test_client()
 
