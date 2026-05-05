@@ -285,7 +285,7 @@ def _hybrid_auth_required():
 
 @app.before_request
 def _login_guard():
-    allowed = {"login_page", "login_post", "logout", "health", "static", "static_files"}
+    allowed = {"login_page", "login_post", "logout", "health", "whoami", "static", "static_files"}
     if request.endpoint in allowed:
         return None
     if request.path == "/favicon.ico":
@@ -356,6 +356,36 @@ def write_json(path, obj):
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True, "service": "sovereign-finance", "date": str(date.today())})
+
+@app.get("/api/whoami")
+def whoami():
+    if _is_logged_in():
+        return jsonify({
+            "ok": True,
+            "authenticated": True,
+            "auth_source": "local",
+        })
+
+    if _auth_mode() == "hybrid":
+        auth_status, auth_user = get_current_core_auth_user()
+
+        if auth_status == "ok" and auth_user and auth_user.get("user_id"):
+            return jsonify({
+                "ok": True,
+                "authenticated": True,
+                "auth_source": "core",
+                "user": auth_user,
+            })
+
+        if auth_status == "unavailable":
+            return jsonify({"ok": False, "error": "auth_unavailable"}), 503
+
+    return jsonify({
+        "ok": False,
+        "authenticated": False,
+        "error": "unauthorized",
+    }), 401
+
 
 @app.get("/api/finance")
 def get_finance():

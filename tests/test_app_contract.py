@@ -105,6 +105,27 @@ class FinanceLiveEndpointRegressionTest(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "unauthorized")
 
 
+    def test_whoami_reports_local_session_when_authenticated(self):
+        response = self.client.get("/api/whoami")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["ok"], True)
+        self.assertEqual(payload["authenticated"], True)
+        self.assertEqual(payload["auth_source"], "local")
+
+    def test_whoami_reports_unauthorized_without_local_session(self):
+        client = self.app_module.app.test_client()
+
+        response = client.get("/api/whoami")
+
+        self.assertEqual(response.status_code, 401)
+        payload = response.get_json()
+        self.assertEqual(payload["ok"], False)
+        self.assertEqual(payload["authenticated"], False)
+        self.assertEqual(payload["error"], "unauthorized")
+
+
     def test_static_app_asset_is_available_without_auth(self):
         client = self.app_module.app.test_client()
 
@@ -510,4 +531,68 @@ class FinanceHybridAuthModeGuardTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         core_auth_mock.assert_not_called()
+
+
+    def test_whoami_reports_local_session_first_in_hybrid_mode(self):
+        with self.client.session_transaction() as session:
+            session["finance_auth"] = True
+
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "core-user"}),
+        ) as core_auth_mock:
+            response = self.client.get("/api/whoami")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["authenticated"], True)
+        self.assertEqual(payload["auth_source"], "local")
+        core_auth_mock.assert_not_called()
+
+    def test_whoami_reports_core_session_in_hybrid_mode(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "core-user", "username": "jakob", "role": "admin"}),
+        ):
+            response = self.client.get(
+                "/api/whoami",
+                headers={"Cookie": "sovereign_session=abc"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["authenticated"], True)
+        self.assertEqual(payload["auth_source"], "core")
+        self.assertEqual(payload["user"]["user_id"], "core-user")
+        self.assertEqual(payload["user"]["username"], "jakob")
+        self.assertEqual(payload["user"]["role"], "admin")
+
+    def test_whoami_reports_unauthorized_in_hybrid_mode(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("unauthorized", None),
+        ):
+            response = self.client.get("/api/whoami")
+
+        self.assertEqual(response.status_code, 401)
+        payload = response.get_json()
+        self.assertEqual(payload["authenticated"], False)
+        self.assertEqual(payload["error"], "unauthorized")
+
+    def test_whoami_reports_auth_unavailable_in_hybrid_mode(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("unavailable", None),
+        ):
+            response = self.client.get(
+                "/api/whoami",
+                headers={"Cookie": "sovereign_session=abc"},
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()["error"], "auth_unavailable")
 
