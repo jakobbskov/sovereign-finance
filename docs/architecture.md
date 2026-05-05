@@ -133,3 +133,42 @@ Known technical debt imported from the live runtime:
 - Runtime data, secrets, backups, snapshots, and `.bak` files remain outside Git.
 
 This reconciliation commit is intentionally a snapshot of the live application state, not a refactor.
+
+## Runtime and repository contract
+
+Sovereign Finance now treats Git as the source of truth for code and `/opt/sovereign-finance` as the live runtime directory.
+
+### Source of truth
+
+Repository checkout:
+
+    /home/jakob/github/sovereign-finance
+
+Runtime directory:
+
+    /opt/sovereign-finance
+
+The runtime directory may contain local operational state that must not be committed, including data files, secrets, backups, snapshots, `.bak` files, virtual environments, and Python cache files.
+
+### Current live baseline
+
+The current repository baseline was reconciled from the live runtime so that future development can happen through normal Git branches and pull requests.
+
+This does not mean the code is structurally clean. It means the repository now reflects the application that is actually running.
+
+Known imported technical debt remains documented separately and should be handled through focused follow-up issues.
+
+### Development rule
+
+New work should follow this order:
+
+1. Start from `main` in the Git checkout.
+2. Create a branch.
+3. Make one focused change.
+4. Validate locally.
+5. Commit and open a pull request.
+6. Merge after review.
+7. Deploy from the Git checkout to the runtime directory.
+8. Smoke test live behavior.
+
+Live is the target, not the workspace.
