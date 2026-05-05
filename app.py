@@ -130,7 +130,7 @@ def _auth_required():
 
 @app.before_request
 def _login_guard():
-    allowed = {"login_page", "login_post", "logout", "health", "static_files"}
+    allowed = {"login_page", "login_post", "logout", "health", "static", "static_files"}
     if request.endpoint in allowed:
         return None
     if request.path == "/favicon.ico":
