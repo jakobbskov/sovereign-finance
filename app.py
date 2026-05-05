@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory, session, redirect, Response
 import json, os, hmac
+import urllib.request
+import urllib.error
 
 
 from datetime import datetime
@@ -50,6 +52,129 @@ def _cookie_secure_enabled() -> bool:
 
 FLASK_SECRET_KEY = _require_runtime_secret("FLASK_SECRET_KEY")
 FINANCE_PASSWORD = _require_runtime_secret("FINANCE_PASSWORD")
+
+AUTH_VALIDATE_URL = _env_value("AUTH_VALIDATE_URL") or "https://auth.innosocia.dk/api/auth/validate"
+AUTH_COOKIE_NAME = _env_value("AUTH_COOKIE_NAME") or "sovereign_session"
+
+
+def _auth_cache_ttl_seconds() -> int:
+    try:
+        value = int(_env_value("AUTH_CACHE_TTL_SECONDS") or "300")
+    except Exception:
+        value = 300
+    return max(0, value)
+
+
+AUTH_CACHE_TTL_SECONDS = _auth_cache_ttl_seconds()
+_CORE_AUTH_CACHE = {}
+
+
+def _core_auth_now_ts() -> float:
+    return datetime.now().timestamp()
+
+
+def _prune_core_auth_cache(now_ts=None):
+    if now_ts is None:
+        now_ts = _core_auth_now_ts()
+
+    expired = [
+        key
+        for key, value in _CORE_AUTH_CACHE.items()
+        if not isinstance(value, dict) or value.get("expires_at", 0) <= now_ts
+    ]
+
+    for key in expired:
+        _CORE_AUTH_CACHE.pop(key, None)
+
+
+def _get_cached_core_auth_user(raw_cookie):
+    now_ts = _core_auth_now_ts()
+    cached = _CORE_AUTH_CACHE.get(raw_cookie)
+
+    if not isinstance(cached, dict):
+        return None, False
+
+    if cached.get("expires_at", 0) <= now_ts:
+        _CORE_AUTH_CACHE.pop(raw_cookie, None)
+        return None, False
+
+    return cached.get("user"), True
+
+
+def _set_cached_core_auth_user(raw_cookie, user):
+    now_ts = _core_auth_now_ts()
+
+    if len(_CORE_AUTH_CACHE) > 1024:
+        _prune_core_auth_cache(now_ts)
+
+    _CORE_AUTH_CACHE[raw_cookie] = {
+        "user": user,
+        "expires_at": now_ts + AUTH_CACHE_TTL_SECONDS,
+    }
+
+
+def _core_auth_cookie_present(raw_cookie: str) -> bool:
+    if not raw_cookie:
+        return False
+    return f"{AUTH_COOKIE_NAME}=" in raw_cookie
+
+
+def get_current_core_auth_user():
+    raw_cookie = request.headers.get("Cookie", "").strip()
+
+    if not _core_auth_cookie_present(raw_cookie):
+        return "unauthorized", None
+
+    cached_user, cache_hit = _get_cached_core_auth_user(raw_cookie)
+    if cache_hit:
+        if cached_user and cached_user.get("user_id"):
+            return "ok", cached_user
+        return "unauthorized", None
+
+    req = urllib.request.Request(
+        AUTH_VALIDATE_URL,
+        headers={
+            "Cookie": raw_cookie,
+            "User-Agent": "sovereign-finance-api/1.0",
+        },
+        method="GET",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 401:
+            _set_cached_core_auth_user(raw_cookie, None)
+            return "unauthorized", None
+        return "unavailable", None
+    except Exception:
+        return "unavailable", None
+
+    if not payload or not payload.get("ok") or not payload.get("authenticated"):
+        _set_cached_core_auth_user(raw_cookie, None)
+        return "unauthorized", None
+
+    user = {
+        "user_id": payload.get("user_id"),
+        "username": payload.get("username"),
+        "role": payload.get("role"),
+    }
+
+    _set_cached_core_auth_user(raw_cookie, user)
+    return "ok", user
+
+
+def require_core_auth_user():
+    auth_status, auth_user = get_current_core_auth_user()
+
+    if auth_status == "unavailable":
+        return None, (jsonify({"ok": False, "error": "auth_unavailable"}), 503)
+
+    if auth_status != "ok" or not auth_user or not auth_user.get("user_id"):
+        return None, (jsonify({"ok": False, "error": "unauthorized"}), 401)
+
+    return auth_user, None
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
