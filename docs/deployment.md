@@ -124,3 +124,99 @@ See `.env.example`.
 Production deployment should place runtime data outside Git and use the configured data directory, for example:
 
 `/opt/sovereign-finance/data`
+
+## Live runtime contract
+
+Sovereign Finance has two separate filesystem roles.
+
+### Git checkout
+
+Authoritative source code checkout:
+
+    /home/jakob/github/sovereign-finance
+
+This directory is used for:
+
+- Git branches
+- pull requests
+- code review
+- documentation updates
+- local validation before deployment
+
+Development must start from this directory, not from the live runtime directory.
+
+### Live runtime
+
+Current live runtime directory:
+
+    /opt/sovereign-finance
+
+This directory is used by the running Docker-based application.
+
+The live runtime currently contains:
+
+- `app.py`
+- `static/`
+- `Dockerfile`
+- `docker-compose.yml`
+- runtime `data/`
+- `.env`
+- backup scripts
+- local backups and historical `.bak` files
+
+Runtime data and secrets are intentionally not tracked in Git.
+
+## Safe deployment direction
+
+The safe direction is:
+
+    Git checkout -> validation -> controlled copy to /opt/sovereign-finance -> container restart -> live smoke test
+
+Never edit `/opt/sovereign-finance` as the primary development workspace.
+
+If a live emergency edit is unavoidable, it must be reconciled back into Git on a dedicated branch before any further development continues.
+
+## Files excluded from Git
+
+The following must remain outside Git:
+
+- `.env`
+- `.nextcloud-backup.env`
+- `data/*.json`
+- `backups/`
+- `_snapshots/`
+- `*.bak*`
+- `__pycache__/`
+- `.venv/`
+
+The repository may contain example files, documentation, source code, Docker configuration, and test fixtures without real financial data.
+
+## Deployment validation
+
+Before copying changes to `/opt/sovereign-finance`, run from the Git checkout:
+
+    python -m py_compile app.py
+    node --check static/app.js
+
+If endpoint behavior is affected, also run the relevant regression tests when present.
+
+After deployment, validate the live app with:
+
+    docker compose ps
+    curl -i http://127.0.0.1:5155/api/health
+
+If the app is exposed through a reverse proxy, validate the public route separately.
+
+## Rollback principle
+
+Rollback must prefer a known working state.
+
+Recommended rollback order:
+
+1. Restore the previous `/opt/sovereign-finance` code snapshot or backup.
+2. Restart the container.
+3. Validate `/api/health`.
+4. Validate the affected user flow.
+5. Only then continue debugging.
+
+Do not debug by repeatedly editing live files without bringing changes back into Git.
