@@ -100,13 +100,7 @@ const api = async (path, opts={}) => {
   return JSON.parse(txt);
 };
 
-function esc(s){
-  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
-}
-function fmt(n){
-  if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
-  return Number(n).toLocaleString("da-DK", { maximumFractionDigits: 2 });
-}
+// esc() and fmt() are defined in /static/sf-format.js.
 
 
 function getVarKey(month){ return "sf_var_"+String(month||""); }
