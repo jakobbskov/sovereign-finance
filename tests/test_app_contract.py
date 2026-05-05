@@ -1,60 +1,178 @@
 import importlib
-import os
+import json
 import tempfile
 import unittest
+from pathlib import Path
 
 
-class FinanceAppContractTest(unittest.TestCase):
+class FinanceLiveEndpointRegressionTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        os.environ["SOVEREIGN_FINANCE_DATA_DIR"] = self.tmp.name
+        self.data_dir = Path(self.tmp.name)
 
         import app as app_module
         self.app_module = importlib.reload(app_module)
+
+        self.app_module.DATA_DIR = str(self.data_dir)
+        self.app_module.FINANCE_PATH = str(self.data_dir / "finance.json")
+        self.app_module.EVENTS_PATH = str(self.data_dir / "events.json")
+        self.app_module.DECISIONS_PATH = str(self.data_dir / "decisions.json")
+
+        self._write_json(
+            self.app_module.FINANCE_PATH,
+            {
+                "version": 1,
+                "assumptions": {
+                    "months": 12,
+                    "buffer_start": 50000,
+                    "buffer_floor": 30000,
+                    "buffer_target": 80000,
+                },
+                "goals": {
+                    "target_buffer": 80000,
+                    "min_buffer_floor": 30000,
+                    "latest_month": 12,
+                },
+                "income": [
+                    {
+                        "name": "Salary",
+                        "monthly": 30000,
+                        "payment": 30000,
+                        "every_months": 1,
+                    }
+                ],
+                "fixed_expenses": [
+                    {
+                        "name": "Fixed expenses",
+                        "monthly": 20000,
+                        "payment": 20000,
+                        "every_months": 1,
+                    }
+                ],
+                "debts": [],
+                "strategies": [
+                    {
+                        "id": "buffer_first",
+                        "name": "Buffer first",
+                        "enabled": True,
+                        "params": {},
+                    }
+                ],
+                "active_strategy_id": "buffer_first",
+            },
+        )
+        self._write_json(self.app_module.EVENTS_PATH, {"version": 1, "events": []})
+        self._write_json(self.app_module.DECISIONS_PATH, {"version": 1, "decisions": []})
+
         self.client = self.app_module.app.test_client()
+        self._authenticate()
 
     def tearDown(self):
         self.tmp.cleanup()
-        os.environ.pop("SOVEREIGN_FINANCE_DATA_DIR", None)
 
-    def test_health_endpoint_returns_ok(self):
-        response = self.client.get("/api/health")
+    def _write_json(self, path, payload):
+        Path(path).write_text(json.dumps(payload), encoding="utf-8")
+
+    def _authenticate(self):
+        with self.client.session_transaction() as session:
+            session["finance_auth"] = True
+
+    def test_health_endpoint_returns_ok_without_auth(self):
+        client = self.app_module.app.test_client()
+
+        response = client.get("/api/health")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json()["ok"], True)
+        payload = response.get_json()
+        self.assertEqual(payload["ok"], True)
+        self.assertEqual(payload["service"], "sovereign-finance")
 
-    def test_decisions_start_empty_when_no_runtime_file_exists(self):
+    def test_protected_finance_endpoint_requires_auth(self):
+        client = self.app_module.app.test_client()
+
+        response = client.get("/api/finance")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json()["error"], "unauthorized")
+
+    def test_finance_endpoint_returns_fixture_state(self):
+        response = self.client.get("/api/finance")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["version"], 1)
+        self.assertEqual(payload["active_strategy_id"], "buffer_first")
+        self.assertEqual(payload["income"][0]["monthly"], 30000)
+
+    def test_events_endpoint_returns_empty_event_store(self):
+        response = self.client.get("/api/events")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"version": 1, "events": []})
+
+    def test_decisions_endpoint_returns_empty_decision_store(self):
         response = self.client.get("/api/decisions")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), {"decisions": []})
+        self.assertEqual(response.get_json(), {"version": 1, "decisions": []})
 
-    def test_create_decision_requires_title_and_decision(self):
-        response = self.client.post("/api/decisions", json={"title": ""})
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json()["ok"], False)
-
-    def test_create_decision_persists_to_history(self):
+    def test_scenario_evaluate_returns_projection(self):
         response = self.client.post(
-            "/api/decisions",
+            "/api/scenario/evaluate",
             json={
-                "title": "Buy freezer",
-                "decision": "Buy freezer now because food storage capacity is needed.",
-                "status": "active",
-                "amountDkk": "2499",
-                "tags": "household, buffer",
-                "rationale": "Reduces waste and improves household resilience.",
+                "type": "purchase",
+                "label": "Test purchase",
+                "amount": 1000,
             },
         )
 
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["ok"], True)
+        self.assertEqual(payload["scenario"]["type"], "purchase")
+        self.assertIn("decision", payload)
+        self.assertIn("risk", payload)
+        self.assertIn("projection", payload)
+        self.assertEqual(payload["projection"]["months"], 12)
 
-        history = self.client.get("/api/decisions").get_json()["decisions"]
+    def test_scenario_save_persists_decision_history(self):
+        response = self.client.post(
+            "/api/scenario/save",
+            json={
+                "scenario": {
+                    "type": "purchase",
+                    "label": "Test saved purchase",
+                    "amount": 1000,
+                },
+                "evaluation": {
+                    "decision": "ok",
+                    "risk": "low",
+                    "reasons": ["test reason"],
+                    "alternatives": [],
+                    "projection": {
+                        "final_buffer": 49000,
+                        "min_buffer": 49000,
+                        "months": 1,
+                        "rows_preview": [],
+                    },
+                },
+                "notes": "test note",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["ok"], True)
+        self.assertEqual(payload["saved"], True)
+        self.assertEqual(payload["count"], 1)
+
+        history_response = self.client.get("/api/decisions")
+        history = history_response.get_json()["decisions"]
+
         self.assertEqual(len(history), 1)
-        self.assertEqual(history[0]["title"], "Buy freezer")
-        self.assertEqual(history[0]["amountDkk"], 2499)
-        self.assertEqual(history[0]["tags"], ["household", "buffer"])
+        self.assertEqual(history[0]["label"], "Test saved purchase")
+        self.assertEqual(history[0]["type"], "purchase")
+        self.assertEqual(history[0]["notes"], "test note")
 
 
 if __name__ == "__main__":
