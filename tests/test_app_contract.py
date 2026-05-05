@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 class FinanceLiveEndpointRegressionTest(unittest.TestCase):
@@ -238,3 +239,138 @@ class FinanceRouteRegistrationTest(unittest.TestCase):
                 seen[key] = rule.endpoint
 
         self.assertEqual(duplicates, [])
+
+
+class FakeAuthResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self):
+        return json.dumps(self.payload).encode("utf-8")
+
+
+class FinanceCoreAuthAdapterTest(unittest.TestCase):
+    def setUp(self):
+        os.environ["SOVEREIGN_FINANCE_ENV"] = "development"
+        os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
+        os.environ["FINANCE_PASSWORD"] = "test-password"
+        os.environ["COOKIE_SECURE"] = "0"
+        os.environ["AUTH_VALIDATE_URL"] = "https://auth.example.test/api/auth/validate"
+        os.environ["AUTH_COOKIE_NAME"] = "sovereign_session"
+        os.environ["AUTH_CACHE_TTL_SECONDS"] = "300"
+
+        import app as app_module
+        self.app_module = importlib.reload(app_module)
+        self.app_module._CORE_AUTH_CACHE.clear()
+        self.client = self.app_module.app.test_client()
+
+    def tearDown(self):
+        for name in (
+            "SOVEREIGN_FINANCE_ENV",
+            "FLASK_SECRET_KEY",
+            "FINANCE_PASSWORD",
+            "COOKIE_SECURE",
+            "AUTH_VALIDATE_URL",
+            "AUTH_COOKIE_NAME",
+            "AUTH_CACHE_TTL_SECONDS",
+        ):
+            os.environ.pop(name, None)
+
+    def test_core_auth_adapter_returns_user_for_valid_session(self):
+        payload = {
+            "ok": True,
+            "authenticated": True,
+            "user_id": "user-123",
+            "username": "jakob",
+            "role": "admin",
+        }
+
+        with patch.object(
+            self.app_module.urllib.request,
+            "urlopen",
+            return_value=FakeAuthResponse(payload),
+        ) as urlopen_mock:
+            with self.app_module.app.test_request_context(
+                "/api/health",
+                headers={"Cookie": "sovereign_session=abc"},
+            ):
+                status, user = self.app_module.get_current_core_auth_user()
+
+        self.assertEqual(status, "ok")
+        self.assertEqual(user["user_id"], "user-123")
+        self.assertEqual(user["username"], "jakob")
+        self.assertEqual(user["role"], "admin")
+
+        req = urlopen_mock.call_args.args[0]
+        self.assertEqual(req.headers["Cookie"], "sovereign_session=abc")
+        self.assertEqual(req.full_url, "https://auth.example.test/api/auth/validate")
+
+    def test_core_auth_adapter_returns_unauthorized_for_missing_cookie(self):
+        with self.app_module.app.test_request_context("/api/health"):
+            status, user = self.app_module.get_current_core_auth_user()
+
+        self.assertEqual(status, "unauthorized")
+        self.assertIsNone(user)
+
+    def test_core_auth_adapter_returns_unauthorized_for_401(self):
+        error = self.app_module.urllib.error.HTTPError(
+            url="https://auth.example.test/api/auth/validate",
+            code=401,
+            msg="unauthorized",
+            hdrs=None,
+            fp=None,
+        )
+
+        with patch.object(self.app_module.urllib.request, "urlopen", side_effect=error):
+            with self.app_module.app.test_request_context(
+                "/api/health",
+                headers={"Cookie": "sovereign_session=abc"},
+            ):
+                status, user = self.app_module.get_current_core_auth_user()
+
+        self.assertEqual(status, "unauthorized")
+        self.assertIsNone(user)
+
+    def test_core_auth_adapter_returns_unavailable_for_auth_service_failure(self):
+        with patch.object(
+            self.app_module.urllib.request,
+            "urlopen",
+            side_effect=TimeoutError("timeout"),
+        ):
+            with self.app_module.app.test_request_context(
+                "/api/health",
+                headers={"Cookie": "sovereign_session=abc"},
+            ):
+                status, user = self.app_module.get_current_core_auth_user()
+
+        self.assertEqual(status, "unavailable")
+        self.assertIsNone(user)
+
+    def test_require_core_auth_user_returns_503_when_auth_unavailable(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("unavailable", None),
+        ):
+            with self.app_module.app.test_request_context("/api/health"):
+                user, error_response = self.app_module.require_core_auth_user()
+
+        response, status = error_response
+        self.assertIsNone(user)
+        self.assertEqual(status, 503)
+        self.assertEqual(response.get_json()["error"], "auth_unavailable")
+
+    def test_local_login_guard_still_uses_finance_session(self):
+        client = self.app_module.app.test_client()
+
+        response = client.get("/api/finance")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json()["error"], "unauthorized")
+
