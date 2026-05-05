@@ -51,3 +51,24 @@ __pycache__/
 
 # Keep example environment file tracked
 !.env.example
+
+# Runtime/local secrets
+.env
+.env.*
+!.env.example
+.nextcloud-backup.env
+
+# Runtime data and backups
+data/*.json
+!data/*.example.json
+!data/.gitkeep
+backups/
+_snapshots/
+
+# Local runtime artifacts
+*.bak
+*.bak.*
+*.broken.*
+*.pre_live_progress.*
+*.pyc
+__pycache__/

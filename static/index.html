@@ -1,107 +1,390 @@
 <!doctype html>
 <html lang="da">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Sovereign Finance</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root {
-      color-scheme: light dark;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:900px;margin:24px auto;padding:0 16px}
+    .card{border:1px solid #ddd;border-radius:12px;padding:16px;margin:12px 0}
+    label{display:block;margin:10px 0 4px}
+    input,select,button,textarea{font:inherit;padding:10px;border-radius:10px;border:1px solid #bbb;width:100%;box-sizing:border-box}
+    button{cursor:pointer}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      .row{align-items:start;}
+      .row > div{min-width:0;}
+      .row label{min-height:2.6em;line-height:1.3;}
 
-    body {
-      max-width: 920px;
-      margin: 0 auto;
-      padding: 2rem;
-      line-height: 1.5;
-    }
+    pre{background:#f6f6f6;padding:12px;border-radius:10px;overflow:auto}
+    .small{opacity:.75;font-size:.9em}
+  
+/* --- FIX: baseline inputs align (grid, mobile-safe) --- */
+.row.two{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  align-items:start;
+}
 
-    header {
-      margin-bottom: 2rem;
-    }
+  .row.two label{min-height:2.6em;line-height:1.3;}
+.row.two .field{min-width:0;}
+.row.two label{display:block;margin:0 0 6px 0;}
+.row.two input,.row.two select,.row.two textarea{width:100%;box-sizing:border-box;}
+ 
+  .row.two label{min-height:2.6em;line-height:1.3;}
+@media (max-width:520px){.row.two{grid-template-columns:1fr;}}
+@media (max-width:520px){.row{grid-template-columns:1fr;}}
+</style>
 
-    form, .decision {
-      border: 1px solid currentColor;
-      border-radius: 0.75rem;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
+<style>
 
-    label {
-      display: block;
-      margin-top: 0.75rem;
-      font-weight: 600;
-    }
-
-    input, textarea, select, button {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 0.65rem;
-      margin-top: 0.25rem;
-      font: inherit;
-    }
-
-    button {
-      margin-top: 1rem;
-      cursor: pointer;
-    }
-
-    .meta {
-      opacity: 0.75;
-      font-size: 0.9rem;
-    }
-
-    .error {
-      color: #b00020;
-      font-weight: 700;
-    }
-  </style>
+</style>
 </head>
+
+<script>
+(async function(){
+
+  async function dash(){
+    try{
+      const r = await fetch("/api/finance");
+      const fin = await r.json();
+      const items = Array.isArray(fin.items) ? fin.items : [];
+
+      let income=0,fixed=0,debt=0;
+
+      for(const it of items){
+        const pay = Number(it.payment||it.amount||0);
+        const every = Math.max(1,Number(it.every_months||1));
+        const m = pay/every;
+
+        if(it.type==="income") income+=m;
+        else if(it.type==="fixed") fixed+=m;
+        else if(it.type==="debt") debt+=m;
+      }
+
+      const available = income-fixed-debt;
+      const fmt = n => Math.round(n).toLocaleString("da-DK")+" kr";
+
+      const a=document.getElementById("dashAvailable");
+      const e=document.getElementById("dashExpectedEnd");
+      const m=document.getElementById("dashMeta");
+
+      if(a) a.textContent = fmt(available);
+      if(e) e.textContent = fmt(available);
+
+      if(m){
+        m.textContent =
+          "Indtægt: "+fmt(income)+
+          " · Faste: "+fmt(fixed)+
+          " · Gæld: "+fmt(debt);
+      }
+
+    }catch(err){
+      console.error("dashboard load error",err);
+    }
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",dash);
+  }else{
+    dash();
+  }
+
+})();
+</script>
+
 <body>
-  <header>
-    <h1>Sovereign Finance</h1>
-    <p>Beslutningshistorik for økonomiske scenarier og prioriteringer.</p>
-  </header>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <h1 style="margin:0">Sovereign Finance</h1>
+      <a id="btnLogout" href="/logout" style="text-decoration:none;border:1px solid #bbb;border-radius:12px;padding:10px 14px;color:inherit;display:inline-block">Log ud</a>
+    </div>
 
-  <main>
-    <section>
-      <h2>Gem beslutning</h2>
-      <form id="decisionForm">
-        <label for="title">Titel</label>
-        <input id="title" name="title" required>
+  <!-- v0.2: Dashboard (default view) -->
+  
+<div id="fatalJsBox" class="card" style="display:none;border-color:#c33;background:#fff8f8">
+  <b>JS-fejl</b>
+  <pre id="fatalJsText" style="white-space:pre-wrap"></pre>
+</div>
 
-        <label for="decision">Beslutning</label>
-        <textarea id="decision" name="decision" rows="4" required></textarea>
+<script>
+window.addEventListener("error", function(ev){
+  try{
+    var box = document.getElementById("fatalJsBox");
+    var txt = document.getElementById("fatalJsText");
+    if(box && txt){
+      box.style.display = "";
+      txt.textContent =
+        "Message: " + (ev.message || "") + "\n" +
+        "Source: " + (ev.filename || "") + ":" + (ev.lineno || "") + ":" + (ev.colno || "") + "\n\n" +
+        ((ev.error && ev.error.stack) ? ev.error.stack : "");
+    }
+  }catch(e){}
+});
+window.addEventListener("unhandledrejection", function(ev){
+  try{
+    var box = document.getElementById("fatalJsBox");
+    var txt = document.getElementById("fatalJsText");
+    if(box && txt){
+      box.style.display = "";
+      txt.textContent = "Promise rejection:\n\n" + (
+        ev.reason && ev.reason.stack ? ev.reason.stack : String(ev.reason)
+      );
+    }
+  }catch(e){}
+});
+</script>
 
-        <label for="amountDkk">Beløb, kr.</label>
-        <input id="amountDkk" name="amountDkk" inputmode="decimal">
+<div class="card" id="dashCard">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="small" style="opacity:.7">Til rådighed nu</div>
+        <div id="dashAvailable" style="font-size:2.2rem;font-weight:700;line-height:1.1">—</div>
+        <div class="small" style="margin-top:6px">
+          <div id="dashExpectedLine"></div>
+        </div>
+      </div>
+      <div style="min-width:240px;flex:1;max-width:360px">
+        <button id="btnWizard" type="button">Kør check-in</button>
+        <button id="btnToggleAdvanced" type="button" style="margin-top:10px">Vis avanceret</button>
+        <div id="dashMeta" class="small" style="margin-top:8px;opacity:.8">—</div>
+          <div id="dashReason" class="small" style="margin-top:8px;opacity:.9"></div>
+          <div id="dashRisk" class="small" style="margin-top:8px;opacity:.9"></div>
+          <div id="dashDaily" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashPressure" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashDaysLeft" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashTempo" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashTempoVsPlan" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashPressureZone" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashNextPressureZone" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashRhythm" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashRealisticEnd" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashFirstMonth" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashWeather" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashDaysTop" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashStrategyTop" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashStrategyAdvice" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashStrategyList" class="small" style="margin-top:8px;opacity:.95"></div>
+<div id="dashGuidance" style="margin-top:4px;color:#666"></div>
+          <div id="dashShockType" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashShockEval" class="small" style="margin-top:8px;opacity:.95"></div>
+      </div>
+    </div>
+  </div>
 
-        <label for="status">Status</label>
-        <select id="status" name="status">
-          <option value="planned">Planlagt</option>
-          <option value="active">Aktiv</option>
-          <option value="done">Færdig</option>
-          <option value="rejected">Afvist</option>
-        </select>
+  <!-- v0.2: Wizard modal -->
+  <div id="wizardOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);padding:18px;z-index:9999">
+    <div class="card" style="max-width:720px;margin:24px auto;background:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <h2 style="margin:0">Check-in</h2>
+        <button id="btnWizardClose" type="button" style="width:auto;padding:10px 12px">Luk</button>
+      </div>
 
-        <label for="tags">Tags, kommasepareret</label>
-        <input id="tags" name="tags" placeholder="buffer, investering, køb">
+      <div id="wizStepWrap" style="margin-top:10px">
+        <div class="small" id="wizStepLabel" style="opacity:.8">—</div>
 
-        <label for="rationale">Begrundelse</label>
-        <textarea id="rationale" name="rationale" rows="3"></textarea>
+        <div id="wizStep1" class="wizStep">
+          <label>Nuværende saldo (kr)</label>
+          <input id="wizBalance" type="number" inputmode="numeric" placeholder="Fx 12345" />
+          <div class="small" style="opacity:.75;margin-top:6px">Det eneste tal vi altid skal kende.</div>
+        </div>
 
-        <button type="submit">Gem beslutning</button>
-      </form>
-      <p id="message"></p>
-    </section>
+        <div id="wizStep2" class="wizStep" style="display:none">
+          <label>Indkomst allerede modtaget?</label>
+          <select id="wizIncomeState">
+            <option value="after">Ja (typisk dag 1)</option>
+            <option value="before">Nej (før løn)</option>
+          </select>
+          <div class="small" style="opacity:.75;margin-top:6px">Det påvirker forventet saldo.</div>
+        </div>
 
-    <section>
-      <h2>Historik</h2>
-      <div id="decisions"></div>
-    </section>
-  </main>
+        <div id="wizStep3" class="wizStep" style="display:none">
+          <label>Uventet siden sidst? (valgfrit)</label>
+          <div class="row">
+            <div><input id="wizSurpriseAmount" type="number" inputmode="numeric" placeholder="Beløb (kr)" /></div>
+            <div><input id="wizSurpriseLabel" type="text" placeholder="Label (fx dyrlæge)" /></div>
+          </div>
+          <div class="small" style="opacity:.75;margin-top:6px">Hvis beløbet er 0, ignoreres det.</div>
+        </div>
 
-  <script src="/static/app.js"></script>
+        <div id="wizStep4" class="wizStep" style="display:none">
+          <label>Ekstra opsparing i dag? (valgfrit)</label>
+          <input id="wizExtraSave" type="number" inputmode="numeric" placeholder="Fx 500" />
+          <div class="small" style="opacity:.75;margin-top:6px">Til buffer eller målopsparing.</div>
+        </div>
+
+        <div id="wizStep5" class="wizStep" style="display:none">
+          <b>Opsummering</b>
+          <div class="small" style="opacity:.8;margin-top:6px" id="wizSummary">—</div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <button id="btnWizBack" type="button" style="width:auto;min-width:120px">Tilbage</button>
+          <button id="btnWizNext" type="button" style="width:auto;min-width:160px">Næste</button>
+          <div id="wizStatus" class="small" style="margin-left:auto;opacity:.8;align-self:center">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="card adv" id="debugCard" style="display:none">
+    <b>Debug</b>
+    <pre id="debug" style="white-space:pre-wrap"></pre>
+  </div>
+
+  <p class="small">Feedback-baseret budget. To tal pr. måned. Resten spørger vi om, når det faktisk betyder noget.</p>
+
+  <div id="advancedWrapLegacy" style="display:none">
+</div>
+
+  
+  <div class="card adv" id="itemsCard">
+    <h2>Budgetposter (Lag 1)</h2>
+    <div class="small" style="opacity:.8;margin-bottom:10px">
+      Én model: type + kategori + beløb + periodicitet. Bruges direkte i beregningerne.
+    </div>
+
+    <div id="itemsList"></div>
+
+    <div class="card adv" style="border:1px dashed #ddd">
+      <h3 style="margin-top:0">Tilføj post</h3>
+
+      <label>Type</label>
+      <select id="itemType">
+        <option value="income">Indtægt</option>
+        <option value="fixed">Fast udgift</option>
+        <option value="debt">Gæld/afdrag</option>
+      </select>
+
+      <label>Kategori</label>
+      <select id="itemCategory"></select>
+
+      <label>Navn</label>
+      <input id="itemName" placeholder="Fx Husleje / Dagligvarer / SU-lån Jakob" />
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label>Beløb (kr)</label>
+          <input id="itemPayment" type="number" inputmode="numeric" placeholder="Fx 6000" />
+        </div>
+        <div>
+          <label>Hver X måned(er)</label>
+          <input id="itemEvery" type="number" inputmode="numeric" value="1" />
+
+      <label>Trækkes dag i måneden</label>
+      <input id="itemPayDay" inputmode="numeric" placeholder="1" value="1" />
+        </div>
+      </div>
+
+      <label>Startmåned (valgfri)</label>
+      <select id="itemStartMonth"></select>
+
+        <button id="btnAddItem" type="button" style="margin-top:10px">Tilføj</button>
+      <div id="itemsStatus" class="small" style="margin-top:8px"></div>
+    </div>
+  </div>
+  <div id="legacyBudgetWrap">
+<h3 style="margin:10px 0 6px">Indkomst (måned)</h3>
+    <div id="incomeList" class="small"></div>
+    <div class="row" style="margin-top:10px">
+      <div><input id="incomeName" placeholder="Navn (fx Løn samlet)" /></div>
+      <div><input id="incomeMonthly" type="number" inputmode="numeric" placeholder="Beløb (kr)" /></div>
+      <div><input id="incomeEvery" type="number" inputmode="numeric" value="1" placeholder="Hver X måned(er)" /></div>
+    </div>
+    <button id="btnAddIncome" type="button" style="margin-top:10px">Tilføj indkomst</button>
+
+    <h3 style="margin:18px 0 6px">Faste udgifter (måned)</h3>
+    <div id="fixedList" class="small"></div>
+    <div class="row" style="margin-top:10px">
+      <div><input id="fixedName" placeholder="Navn (fx Husleje samlet)" /></div>
+      <div><input id="fixedMonthly" type="number" inputmode="numeric" placeholder="Beløb (kr)" /></div>
+      <div><input id="fixedEvery" type="number" inputmode="numeric" value="1" placeholder="Hver X måned(er)" /></div>
+    </div>
+    <button id="btnAddFixed" type="button" style="margin-top:10px">Tilføj fast udgift</button>
+
+    <h3 style="margin:18px 0 6px">Gæld / afdrag</h3>
+    <div id="debtList" class="small"></div>
+    <div class="row" style="margin-top:10px">
+      <div><input id="debtName" placeholder="Navn (fx SU-lån Jakob)" /></div>
+      <div><input id="debtPayment" type="number" inputmode="numeric" placeholder="Beløb pr. betaling" /></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div>
+        <label>Hver X måned(er)</label>
+        <input id="debtEvery" type="number" inputmode="numeric" value="1" />
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="btnAddDebt" type="button">Tilføj gæld</button>
+      </div>
+    </div>
+
+    <h3 style="margin:18px 0 6px">Variabel (estimat)</h3>
+    <div class="small" style="opacity:.8">
+      Læses pt. fra seneste month_log → overrides.categories (groceries, fuel, takeaway osv.). Vi gør den pænere i næste trin.
+    </div>
+
+    <div id="budgetStatus" class="small" style="margin-top:10px"></div>
+  </div>
+  </div>
+
+
+  <div class="card adv">
+    
+  <!-- Advanced section wrapper (toggle) -->
+  <div id="advancedWrap" style="display:none">
+<h2>Strategi</h2>
+    <label>Vælg strategi</label>
+    <select id="strategySelect"></select>
+    <button id="btnSelectStrategy" style="margin-top:10px" type="button">Aktivér strategi</button>
+    <div id="activeStrategy" class="small" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card adv">
+    
+      <section id="strategySummaryCard" class="card" style="margin-top:16px">
+        <h2>Din plan lige nu</h2>
+        <div id="strategySummaryOverall" class="small" style="margin-top:8px"></div>
+        <div id="strategySummaryAdvice" class="small" style="margin-top:8px"></div>
+        <div id="strategySummaryList" class="small" style="margin-top:12px; white-space:pre-line"></div>
+        <div id="strategySummaryDetails" class="small" style="margin-top:12px; white-space:pre-line"></div>
+      </section>
+
+<details id="legacyStrategySection" class="card adv" style="margin-top:16px">
+  <summary>Legacy-strategi (midlertidig)</summary>
+<h2>Aktiv strategi</h2>
+    <div id="strategyPanel" style="border:1px solid #ddd; padding:12px; border-radius:10px; margin:10px 0; background:#fafafa">
+      <div class="small">Indlæser strategi...</div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Fast opsparing pr. måned (kr)</label>
+        <input id="forcedSavings" type="number" value="0"/>
+      </div>
+      <div>
+        <label>Advar hvis afvigelse &gt; (kr)</label>
+        <input id="warnDeviation" type="number" value="5000"/>
+      </div>
+    </div>
+
+    <button id="btnSaveStrategyParams" style="margin-top:10px" type="button">Gem strategi-justeringer</button>
+    <div id="strategyParamsStatus" class="small" style="margin-top:8px"></div>
+</details>
+  </div>
+
+    <details class="card adv" style="margin-top:16px">
+      <summary>Legacy / diagnose (midlertidig)</summary>
+      <div class="small" style="margin-top:10px;opacity:.8">
+        Gammel check-in, månedsluk og feedback er skjult fra normal brug.
+        Brug check-in wizarden øverst. Legacy-logik beholdes kun midlertidigt til fejlsøgning.
+      </div>
+    </details>
+</div>
+
+  <script defer src="/static/app.js?v=1772603389"></script>
+
+  </div>
+  <!-- /advancedWrap -->
 </body>
 </html>
