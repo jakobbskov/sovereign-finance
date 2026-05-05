@@ -1,5 +1,6 @@
 import importlib
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,11 @@ class FinanceLiveEndpointRegressionTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.data_dir = Path(self.tmp.name)
+
+        os.environ["SOVEREIGN_FINANCE_ENV"] = "development"
+        os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
+        os.environ["FINANCE_PASSWORD"] = "test-password"
+        os.environ["COOKIE_SECURE"] = "0"
 
         import app as app_module
         self.app_module = importlib.reload(app_module)
@@ -69,6 +75,8 @@ class FinanceLiveEndpointRegressionTest(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+        for name in ("SOVEREIGN_FINANCE_ENV", "FLASK_SECRET_KEY", "FINANCE_PASSWORD", "COOKIE_SECURE"):
+            os.environ.pop(name, None)
 
     def _write_json(self, path, payload):
         Path(path).write_text(json.dumps(payload), encoding="utf-8")
@@ -94,6 +102,23 @@ class FinanceLiveEndpointRegressionTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.get_json()["error"], "unauthorized")
+
+
+    def test_login_accepts_configured_password(self):
+        client = self.app_module.app.test_client()
+
+        response = client.post("/login", data={"password": "test-password"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/")
+
+    def test_login_rejects_wrong_password(self):
+        client = self.app_module.app.test_client()
+
+        response = client.post("/login", data={"password": "wrong"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/login?err=1")
 
     def test_finance_endpoint_returns_fixture_state(self):
         response = self.client.get("/api/finance")

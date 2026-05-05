@@ -21,13 +21,43 @@ def _month_progress(yyyy_mm: str, now_dt: datetime | None = None):
     return progress, d, dim
 from datetime import date, timedelta
 
+def _env_value(name: str) -> str:
+    return str(os.environ.get(name, "") or "").strip()
+
+
+def _is_dev_runtime() -> bool:
+    return _env_value("SOVEREIGN_FINANCE_ENV").lower() == "development"
+
+
+def _require_runtime_secret(name: str) -> str:
+    value = _env_value(name)
+
+    if value and value != "CHANGE-ME":
+        return value
+
+    if _is_dev_runtime():
+        return f"dev-only-{name.lower()}"
+
+    raise RuntimeError(f"{name} must be set to a non-placeholder value")
+
+
+def _cookie_secure_enabled() -> bool:
+    value = _env_value("COOKIE_SECURE")
+    if not value:
+        return True
+    return value == "1"
+
+
+FLASK_SECRET_KEY = _require_runtime_secret("FLASK_SECRET_KEY")
+FINANCE_PASSWORD = _require_runtime_secret("FINANCE_PASSWORD")
+
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "CHANGE-ME")
+app.secret_key = FLASK_SECRET_KEY
 app.permanent_session_lifetime = timedelta(hours=12)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=(os.environ.get("COOKIE_SECURE", "1") == "1"),
+    SESSION_COOKIE_SECURE=_cookie_secure_enabled(),
 )
 
 LOGIN_HTML = """<!doctype html>
@@ -117,10 +147,8 @@ def login_page():
 
 @app.post("/login")
 def login_post():
-    expected = str(os.environ.get("FINANCE_PASSWORD", "") or "").strip()
+    expected = FINANCE_PASSWORD
     provided = str(request.form.get("password", "") or "").strip()
-    if not expected:
-        return Response("FINANCE_PASSWORD mangler på serveren", status=500, mimetype="text/plain")
     if hmac.compare_digest(provided, expected):
         session.permanent = True
         session["finance_auth"] = True
