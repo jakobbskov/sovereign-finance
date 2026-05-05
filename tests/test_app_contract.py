@@ -177,3 +177,22 @@ class FinanceLiveEndpointRegressionTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FinanceRouteRegistrationTest(unittest.TestCase):
+    def test_no_duplicate_same_method_routes_are_registered(self):
+        import app as app_module
+
+        seen = {}
+        duplicates = []
+
+        for rule in app_module.app.url_map.iter_rules():
+            methods = tuple(sorted(method for method in rule.methods if method not in {"HEAD", "OPTIONS"}))
+            key = (str(rule), methods)
+
+            if key in seen:
+                duplicates.append((str(rule), ",".join(methods), seen[key], rule.endpoint))
+            else:
+                seen[key] = rule.endpoint
+
+        self.assertEqual(duplicates, [])

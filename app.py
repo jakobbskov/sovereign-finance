@@ -1356,7 +1356,8 @@ def _sovfin_recs(fin, feedback, sid, params):
 # COMPAT_BLOCK_DISABLED     pass
 
 try:
-    @app.route("/api/strategy/params", methods=["POST"])
+    # Duplicate route disabled: /api/strategy/params is served by api_strategy_params() above.
+    # @app.route("/api/strategy/params", methods=["POST"])
     def api_strategy_params_compat():
         fin = _sovfin_finance_obj()
         sid = _sovfin_active_id(fin)
@@ -1453,7 +1454,8 @@ def _baseline_totals(finance):
         fx = sum(float(x.get("monthly", 0) or 0) for x in finance.get("fixed_expenses", []))
     return float(inc or 0), float(fx or 0)
 
-@app.get("/api/strategies")
+# Duplicate route disabled: /api/strategies is served by strategies() above.
+# @app.get("/api/strategies")
 def api_strategies_vnext():
     return jsonify({"strategies": _get_strategies()})
 
