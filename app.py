@@ -57,6 +57,13 @@ AUTH_VALIDATE_URL = _env_value("AUTH_VALIDATE_URL") or "https://auth.innosocia.d
 AUTH_COOKIE_NAME = _env_value("AUTH_COOKIE_NAME") or "sovereign_session"
 
 
+def _auth_mode() -> str:
+    mode = _env_value("AUTH_MODE").lower()
+    if mode == "hybrid":
+        return "hybrid"
+    return "local"
+
+
 def _auth_cache_ttl_seconds() -> int:
     try:
         value = int(_env_value("AUTH_CACHE_TTL_SECONDS") or "300")
@@ -253,6 +260,29 @@ def _auth_required():
         return jsonify({"ok": False, "error": "unauthorized"}), 401
     return redirect("/login")
 
+
+def _auth_unavailable_required():
+    if request.path.startswith("/api/"):
+        return jsonify({"ok": False, "error": "auth_unavailable"}), 503
+    return Response(
+        "Sovereign Core Auth er midlertidigt utilgængelig.",
+        status=503,
+        mimetype="text/plain",
+    )
+
+
+def _hybrid_auth_required():
+    auth_status, auth_user = get_current_core_auth_user()
+
+    if auth_status == "ok" and auth_user and auth_user.get("user_id"):
+        return None
+
+    if auth_status == "unavailable":
+        return _auth_unavailable_required()
+
+    return _auth_required()
+
+
 @app.before_request
 def _login_guard():
     allowed = {"login_page", "login_post", "logout", "health", "static", "static_files"}
@@ -260,8 +290,11 @@ def _login_guard():
         return None
     if request.path == "/favicon.ico":
         return ("", 204)
-    if not _is_logged_in():
-        return _auth_required()
+    if _is_logged_in():
+        return None
+    if _auth_mode() == "hybrid":
+        return _hybrid_auth_required()
+    return _auth_required()
 
 @app.get("/login")
 def login_page():

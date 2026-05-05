@@ -374,3 +374,140 @@ class FinanceCoreAuthAdapterTest(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.get_json()["error"], "unauthorized")
 
+
+class FinanceHybridAuthModeGuardTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.data_dir = Path(self.tmp.name)
+
+        os.environ["SOVEREIGN_FINANCE_ENV"] = "development"
+        os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
+        os.environ["FINANCE_PASSWORD"] = "test-password"
+        os.environ["COOKIE_SECURE"] = "0"
+        os.environ["AUTH_MODE"] = "hybrid"
+        os.environ["AUTH_VALIDATE_URL"] = "https://auth.example.test/api/auth/validate"
+        os.environ["AUTH_COOKIE_NAME"] = "sovereign_session"
+        os.environ["AUTH_CACHE_TTL_SECONDS"] = "300"
+
+        import app as app_module
+        self.app_module = importlib.reload(app_module)
+        self.app_module._CORE_AUTH_CACHE.clear()
+
+        self.app_module.DATA_DIR = str(self.data_dir)
+        self.app_module.FINANCE_PATH = str(self.data_dir / "finance.json")
+        self.app_module.EVENTS_PATH = str(self.data_dir / "events.json")
+        self.app_module.DECISIONS_PATH = str(self.data_dir / "decisions.json")
+
+        self._write_json(
+            self.app_module.FINANCE_PATH,
+            {
+                "version": 1,
+                "income": [],
+                "fixed_expenses": [],
+                "events": [],
+                "strategies": [],
+            },
+        )
+        self._write_json(self.app_module.EVENTS_PATH, {"version": 1, "events": []})
+        self._write_json(self.app_module.DECISIONS_PATH, {"version": 1, "decisions": []})
+
+        self.client = self.app_module.app.test_client()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+        for name in (
+            "SOVEREIGN_FINANCE_ENV",
+            "FLASK_SECRET_KEY",
+            "FINANCE_PASSWORD",
+            "COOKIE_SECURE",
+            "AUTH_MODE",
+            "AUTH_VALIDATE_URL",
+            "AUTH_COOKIE_NAME",
+            "AUTH_CACHE_TTL_SECONDS",
+        ):
+            os.environ.pop(name, None)
+
+    def _write_json(self, path, payload):
+        Path(path).write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_local_mode_still_requires_finance_session_and_does_not_call_core_auth(self):
+        os.environ["AUTH_MODE"] = "local"
+
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "core-user"}),
+        ) as core_auth_mock:
+            response = self.client.get(
+                "/api/finance",
+                headers={"Cookie": "sovereign_session=abc"},
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json()["error"], "unauthorized")
+        core_auth_mock.assert_not_called()
+
+    def test_hybrid_mode_accepts_existing_local_finance_session_first(self):
+        with self.client.session_transaction() as session:
+            session["finance_auth"] = True
+
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "core-user"}),
+        ) as core_auth_mock:
+            response = self.client.get("/api/finance")
+
+        self.assertEqual(response.status_code, 200)
+        core_auth_mock.assert_not_called()
+
+    def test_hybrid_mode_accepts_valid_core_auth_session(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "core-user", "username": "jakob", "role": "admin"}),
+        ) as core_auth_mock:
+            response = self.client.get(
+                "/api/finance",
+                headers={"Cookie": "sovereign_session=abc"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        core_auth_mock.assert_called_once()
+
+    def test_hybrid_mode_rejects_missing_or_invalid_auth(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("unauthorized", None),
+        ):
+            response = self.client.get("/api/finance")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json()["error"], "unauthorized")
+
+    def test_hybrid_mode_returns_503_when_core_auth_is_unavailable(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("unavailable", None),
+        ):
+            response = self.client.get(
+                "/api/finance",
+                headers={"Cookie": "sovereign_session=abc"},
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()["error"], "auth_unavailable")
+
+    def test_hybrid_mode_keeps_static_assets_public(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("unavailable", None),
+        ) as core_auth_mock:
+            response = self.client.get("/static/app.js")
+
+        self.assertEqual(response.status_code, 200)
+        core_auth_mock.assert_not_called()
+
