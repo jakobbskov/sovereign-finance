@@ -92,6 +92,20 @@ Because Sovereign Finance deals with personal financial information, the followi
 - backups must be secure
 - repository data must never contain real financial records
 
+## Shared-instance data boundary
+
+Sovereign Finance currently uses one shared dataset per deployment.
+
+Authentication controls access to the application. It does not currently create separate budgets, files, or financial records per authenticated user.
+
+Even when Core Auth hybrid login is enabled, the persisted Finance data remains shared at the instance level unless a future user-scoped storage model is explicitly implemented.
+
+Current safe wording:
+
+`Login controls access to the app, but does not create separate budgets per user.`
+
+See `docs/data-auth-boundary-audit.md` for the detailed auth/data boundary audit.
+
 ## Repository boundary
 
 The Git repository may contain:
