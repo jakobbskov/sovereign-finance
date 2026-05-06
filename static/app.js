@@ -1710,11 +1710,9 @@ window.renderDashboard = renderDash;
           baseline.style.display = "none";
         }
 
-      // hvis itemsCard findes, sørg for den er synlig
-      const itemsCard = $("itemsCard");
-      if (itemsCard && hasItems){
-        itemsCard.style.display = "";
-      }
+      // Keep advanced-card visibility controlled by the shared advanced state.
+      // itemsCard has class "adv", so direct display mutation here would override reload state.
+      try{ setAdvancedVisible(getAdvancedVisible()); }catch(e){}
     }catch(e){}
   });
 })();
