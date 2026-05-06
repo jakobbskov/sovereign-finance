@@ -191,6 +191,73 @@ The following must remain outside Git:
 
 The repository may contain example files, documentation, source code, Docker configuration, and test fixtures without real financial data.
 
+## Production auth mode
+
+Current production mode:
+
+    AUTH_MODE=hybrid
+
+Sovereign Finance accepts two authentication paths in this mode:
+
+- a valid Sovereign Core Auth session cookie
+- the local Finance password login as fallback
+
+The required runtime environment keys are:
+
+- `AUTH_MODE`
+- `AUTH_VALIDATE_URL`
+- `AUTH_COOKIE_NAME`
+- `AUTH_CACHE_TTL_SECONDS`
+- `SOVEREIGN_FINANCE_ENV`
+- `COOKIE_SECURE`
+- `FLASK_SECRET_KEY`
+- `FINANCE_PASSWORD`
+
+The Finance container must receive these values through `docker-compose.yml`, not only through the host `.env` file.
+
+### Expected hybrid auth checks
+
+Unauthenticated requests should remain protected:
+
+    curl -sS -o /dev/null -w "health=%{http_code}\n" http://127.0.0.1:5155/api/health
+    curl -sS -o /dev/null -w "whoami_unauth=%{http_code}\n" http://127.0.0.1:5155/api/whoami
+    curl -sS -o /dev/null -w "finance_unauth=%{http_code}\n" http://127.0.0.1:5155/api/finance
+    curl -sS -o /dev/null -w "static_app=%{http_code}\n" http://127.0.0.1:5155/static/app.js
+
+Expected result:
+
+    health=200
+    whoami_unauth=401
+    finance_unauth=401
+    static_app=200
+
+A valid Core Auth browser session should return:
+
+    https://finance.innosocia.dk/api/whoami
+
+Expected result:
+
+    auth_source=core
+    authenticated=true
+
+The local Finance login must remain available as fallback in hybrid mode.
+
+### Auth rollback
+
+If hybrid auth fails in production, rollback is configuration-only:
+
+    cd /opt/sovereign-finance
+    sudo sed -i 's/^AUTH_MODE=.*/AUTH_MODE=local/' .env
+    sudo docker compose up -d --build
+
+Then verify:
+
+    curl -sS -o /dev/null -w "health=%{http_code}\n" http://127.0.0.1:5155/api/health
+    curl -sS -o /dev/null -w "whoami_unauth=%{http_code}\n" http://127.0.0.1:5155/api/whoami
+    curl -sS -o /dev/null -w "finance_unauth=%{http_code}\n" http://127.0.0.1:5155/api/finance
+
+Hybrid auth controls access to the app. It does not create separate per-user Finance data. See `docs/data-auth-boundary-audit.md`.
+
 ## Deployment validation
 
 Before copying changes to `/opt/sovereign-finance`, run from the Git checkout:
