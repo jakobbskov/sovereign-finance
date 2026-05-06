@@ -551,12 +551,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Advanced toggle
   
 function setAdvancedVisible(on){
-  try { localStorage.setItem("sf_show_adv", on ? "1" : "0"); } catch(e){}
+  const visible = Boolean(on);
+  try { localStorage.setItem("sf_show_adv", visible ? "1" : "0"); } catch(e){}
+  try { document.body.classList.toggle("sf-advanced-open", visible); } catch(e){}
   document.querySelectorAll(".adv").forEach(el => {
-    el.style.display = on ? "" : "none";
+    el.style.display = visible ? "" : "none";
   });
   const btn = $("btnToggleAdvanced");
-  if (btn) btn.textContent = on ? "Skjul avanceret" : "Vis avanceret";
+  if (btn) btn.textContent = visible ? "Skjul avanceret" : "Vis avanceret";
 }
 
 function getAdvancedVisible(){
@@ -564,15 +566,12 @@ function getAdvancedVisible(){
 }
 
 const btnAdv = $("btnToggleAdvanced");
-  if (btnAdv){
-    
-btnAdv.addEventListener("click", () => {
-  const adv = document.querySelectorAll(".adv");
-  const isHidden = adv.length ? adv[0].style.display === "none" : false;
-  adv.forEach(x => x.style.display = isHidden ? "" : "none");
-  btnAdv.textContent = isHidden ? "Skjul avanceret" : "Vis avanceret";
-});
+if (btnAdv){
+  btnAdv.addEventListener("click", () => {
+    setAdvancedVisible(!getAdvancedVisible());
+  });
 }
+
 
   // Wizard open/close
   const btnW = $("btnWizard");
@@ -1851,20 +1850,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Apply advanced visibility on load
 try{ setAdvancedVisible(getAdvancedVisible()); }catch(e){}
-
-
-
-
-
-
-
-/* HIDE_ADV_ON_LOAD_SIMPLE */
-document.addEventListener("DOMContentLoaded", function(){
-  document.querySelectorAll(".adv").forEach(x => x.style.display = "none");
-  const btn = document.getElementById("btnToggleAdvanced");
-  if (btn) btn.textContent = "Vis avanceret";
-});
-
 
 /* ===== CASHFLOW HELPERS ===== */
 
@@ -4382,17 +4367,11 @@ if(document.readyState==="loading"){
   }
 
   function wireRoModeButton(){
-    const btn = document.getElementById("btnToggleAdvanced");
-    if (!btn || btn.dataset.roModeBound === "1") return;
-
-    btn.dataset.roModeBound = "1";
-    btn.addEventListener("click", function(){
-      document.body.classList.toggle("sf-advanced-open");
+    try{
+      setAdvancedVisible(getAdvancedVisible());
+    }catch(e){
       applyRoModeState();
-    });
-
-    document.body.classList.remove("sf-advanced-open");
-    applyRoModeState();
+    }
   }
 
   async function installRoMode(){
