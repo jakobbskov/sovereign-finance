@@ -572,6 +572,9 @@ if (btnAdv){
   });
 }
 
+// Apply saved advanced visibility after the toggle helpers are in scope.
+try{ setAdvancedVisible(getAdvancedVisible()); }catch(e){}
+
 
   // Wizard open/close
   const btnW = $("btnWizard");
