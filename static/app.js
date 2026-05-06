@@ -60,12 +60,6 @@ container = legacyDetails;
 const el = (id) => document.getElementById(id);
 
 function dbg(msg){
-  try{
-    const debugCard = document.getElementById("debugCard");
-    const d = document.getElementById("debug");
-    if (debugCard) debugCard.style.display = "block";
-    if (d) d.textContent = String(msg ?? "");
-  }catch(e){}
   try{ console.log(msg); }catch(e){}
 }
 
@@ -494,7 +488,6 @@ async function init(){
     }catch(e){}
   });
 
-dbg("Init OK");
 
 
   
@@ -514,7 +507,7 @@ wireLiveStatus();
     dbg(e && e.message ? e.message : String(e));
   }
 });
-  el("btnStatus")?.addEventListener("click", async (ev) => { try{ev.preventDefault();}catch(e){} try{ const fb = el("feedback"); if (fb) fb.innerHTML = "<div class=\"small\">CLICK: Giv status</div>"; }catch(e){} try{ await doStatus(); }catch(e){ dbg(e && e.message ? e.message : String(e)); } });
+  el("btnStatus")?.addEventListener("click", async (ev) => { try{ev.preventDefault();}catch(e){} try{ await doStatus(); }catch(e){ dbg(e && e.message ? e.message : String(e)); } });
   el("btnMonthClose")?.addEventListener("click", (ev) => { try{ev.preventDefault();
   el("btnSaveVar")?.addEventListener("click", () => saveVarEstimate());
 }catch(e){} doMonthClose().catch(e=>dbg(e.message||String(e))); });
@@ -5072,21 +5065,6 @@ function detectPressureZone(events){
       };
 
       const strategyEval = sfEvaluateStrategies(finance, ctx);
-
-      try{
-        const dbg = document.getElementById("debugOut");
-        if (dbg){
-          dbg.textContent =
-            "Init OK\n" +
-            "CTX dailyBudget=" + String(ctx.dailyBudget) + "\n" +
-            "CTX daysLeftMoney=" + String(ctx.daysLeftMoney) + "\n" +
-            "CTX remainingDays=" + String(ctx.remainingDays) + "\n" +
-            "CTX expectedEnd=" + String(ctx.expectedEnd) + "\n" +
-            "CTX deviation=" + String(ctx.deviation) + "\n" +
-            "CTX extraSaveTotal=" + String(ctx.extraSaveTotal) + "\n" +
-            "Strategy overall=" + String(strategyEval.overall_status);
-        }
-      }catch(e){}
 
       finance.strategy_eval = strategyEval;
       try{
