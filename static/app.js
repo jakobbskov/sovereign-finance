@@ -45,8 +45,8 @@ function getIncomeAlreadyReceived(){
 
 const el = (id) => document.getElementById(id);
 
-function dbg(msg){
-  try{ console.log(msg); }catch(e){}
+function dbg(_msg){
+  // Production no-op: keep error hooks silent unless explicit debugging is reintroduced.
 }
 
 /* GLOBAL_ERROR_HOOK */
@@ -1569,13 +1569,10 @@ async function renderDash(){
       } else if (typeof api === "function"){
         fin = await api("/api/finance");
       }
-    }catch(e){
-      console.warn("renderDash: kunne ikke hente finance", e);
-    }
+    }catch(e){}
   }
 
   if (!fin || typeof fin !== "object"){
-    console.warn("renderDash: finance state mangler");
     return;
   }
 
@@ -1739,9 +1736,7 @@ async function renderDash_disabled(){
     const el2 = document.getElementById("dashExpectedEnd");
     if (el2) el2.textContent = fmt(available);
 
-  }catch(e){
-    console.error("renderDash failed:", e);
-  }
+  }catch(e){}
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1872,7 +1867,7 @@ function isDueThisMonth(item, monthKey){
   return ((mIdx - sIdx) % interval) === 0;
 }
 
-/* ===== v0.2.x Legacy feedback: classify deviation (reserve / cashflow / shock) ===== */
+/* ===== Deviation classification: reserve / cashflow / shock ===== */
 (function(){
   return; // disabled: using HOTFIX block below
   // Don’t double-install
@@ -2620,9 +2615,7 @@ window.addEventListener("load", function () {
 
       card.style.display = "none";
     });
-  } catch (e) {
-    console.warn("hide legacy cards failed:", e);
-  }
+  } catch (e) {}
 });
 
 /* ===== HOTFIX: dashboard last checkin info ===== */
@@ -2997,7 +2990,7 @@ window.addEventListener("load", function () {
 
 
 
-/* ===== HARD DASH FIX v0.3 ===== */
+/* ===== Dashboard summary rendering ===== */
 document.addEventListener("DOMContentLoaded", async () => {
   try{
 
@@ -3034,9 +3027,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         "Indtægt: "+fmt(income)+" · Faste: "+fmt(fixed)+" · Gæld: "+fmt(debt);
     }
 
-  }catch(err){
-    console.error("HARD DASH FIX failed:",err);
-  }
+  }catch(err){}
 });
 
 
