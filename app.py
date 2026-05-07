@@ -59,6 +59,8 @@ AUTH_COOKIE_NAME = _env_value("AUTH_COOKIE_NAME") or "sovereign_session"
 
 def _auth_mode() -> str:
     mode = _env_value("AUTH_MODE").lower()
+    if mode == "core":
+        return "core"
     if mode == "hybrid":
         return "hybrid"
     return "local"
@@ -283,6 +285,25 @@ def _hybrid_auth_required():
     return _auth_required()
 
 
+def _core_auth_required():
+    auth_status, auth_user = get_current_core_auth_user()
+
+    if auth_status == "ok" and auth_user and auth_user.get("user_id"):
+        return None
+
+    if auth_status == "unavailable":
+        return _auth_unavailable_required()
+
+    if request.path.startswith("/api/"):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    return Response(
+        "Sovereign Core Auth-session kræves.",
+        status=401,
+        mimetype="text/plain",
+    )
+
+
 @app.before_request
 def _login_guard():
     allowed = {"login_page", "login_post", "logout", "health", "whoami", "static", "static_files"}
@@ -290,21 +311,43 @@ def _login_guard():
         return None
     if request.path == "/favicon.ico":
         return ("", 204)
+
+    mode = _auth_mode()
+
+    if mode == "core":
+        return _core_auth_required()
+
     if _is_logged_in():
         return None
-    if _auth_mode() == "hybrid":
+
+    if mode == "hybrid":
         return _hybrid_auth_required()
+
     return _auth_required()
 
 @app.get("/login")
 def login_page():
+    if _auth_mode() == "core":
+        core_auth_error = _core_auth_required()
+        if core_auth_error is None:
+            return redirect("/")
+        return core_auth_error
+
     if _is_logged_in():
         return redirect("/")
+
     err_html = '<div class="err">Forkert adgangskode.</div>' if request.args.get("err") else ""
     return Response(LOGIN_HTML.replace("__ERR__", err_html), mimetype="text/html")
 
 @app.post("/login")
 def login_post():
+    if _auth_mode() == "core":
+        return Response(
+            "Lokal Finance-login er deaktiveret i Core Auth mode.",
+            status=401,
+            mimetype="text/plain",
+        )
+
     expected = FINANCE_PASSWORD
     provided = str(request.form.get("password", "") or "").strip()
     if hmac.compare_digest(provided, expected):
@@ -359,14 +402,16 @@ def health():
 
 @app.get("/api/whoami")
 def whoami():
-    if _is_logged_in():
+    mode = _auth_mode()
+
+    if mode in {"local", "hybrid"} and _is_logged_in():
         return jsonify({
             "ok": True,
             "authenticated": True,
             "auth_source": "local",
         })
 
-    if _auth_mode() == "hybrid":
+    if mode in {"core", "hybrid"}:
         auth_status, auth_user = get_current_core_auth_user()
 
         if auth_status == "ok" and auth_user and auth_user.get("user_id"):
