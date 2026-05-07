@@ -256,11 +256,6 @@ window.addEventListener("unhandledrejection", function(ev){
 
 
   <p class="small">Feedback-baseret budget. To tal pr. måned. Resten spørger vi om, når det faktisk betyder noget.</p>
-
-  <div id="advancedWrapLegacy" style="display:none">
-</div>
-
-  
   <div class="card adv" id="itemsCard">
     <h2>Budgetposter (Lag 1)</h2>
     <div class="small" style="opacity:.8;margin-bottom:10px">
@@ -372,37 +367,7 @@ window.addEventListener("unhandledrejection", function(ev){
         <div id="strategySummaryList" class="small" style="margin-top:12px; white-space:pre-line"></div>
         <div id="strategySummaryDetails" class="small" style="margin-top:12px; white-space:pre-line"></div>
       </section>
-
-<details id="legacyStrategySection" class="card adv" style="margin-top:16px">
-  <summary>Legacy-strategi (midlertidig)</summary>
-<h2>Aktiv strategi</h2>
-    <div id="strategyPanel" style="border:1px solid #ddd; padding:12px; border-radius:10px; margin:10px 0; background:#fafafa">
-      <div class="small">Indlæser strategi...</div>
-    </div>
-
-    <div class="row">
-      <div>
-        <label>Fast opsparing pr. måned (kr)</label>
-        <input id="forcedSavings" type="number" value="0"/>
-      </div>
-      <div>
-        <label>Advar hvis afvigelse &gt; (kr)</label>
-        <input id="warnDeviation" type="number" value="5000"/>
-      </div>
-    </div>
-
-    <button id="btnSaveStrategyParams" style="margin-top:10px" type="button">Gem strategi-justeringer</button>
-    <div id="strategyParamsStatus" class="small" style="margin-top:8px"></div>
-</details>
-  </div>
-
-    <details class="card adv" style="margin-top:16px">
-      <summary>Legacy / diagnose (midlertidig)</summary>
-      <div class="small" style="margin-top:10px;opacity:.8">
-        Gammel check-in, månedsluk og feedback er skjult fra normal brug.
-        Brug check-in wizarden øverst. Legacy-logik beholdes kun midlertidigt til fejlsøgning.
-      </div>
-    </details>
+</div>
 </div>
 
   <script defer src="/static/sf-format.js?v=1"></script>
