@@ -3111,6 +3111,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (!out.length){
+      out.push("Forklaring: ingen særskilt afvigelse registreret endnu.");
     }
 
     return out;
@@ -3225,22 +3226,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   function riskText(deviation, availableNow, expectedEnd){
     const day = new Date().getDate();
 
-    if (!isFinite(deviation)) return "Risikoperiode: ukendt";
+    if (!isFinite(deviation)) return "Risikoperiode: ukendt, fordi afvigelsen ikke kan beregnes endnu.";
 
-    if (deviation <= -5000) return "Risikoperiode: høj";
-    if (deviation <= -1500 && day >= 20) return "Risikoperiode: sidst på måneden";
-    if (deviation <= -1500 && day >= 10) return "Risikoperiode: midt på måneden";
-    if (deviation <= -1500) return "Risikoperiode: moderat";
+    if (deviation <= -5000) return "Risikoperiode: høj, fordi afvigelsen er mindst 5.000 kr. bag planen.";
+    if (deviation <= -1500 && day >= 20) return "Risikoperiode: sidst på måneden, fordi afvigelsen er over 1.500 kr. efter den 20.";
+    if (deviation <= -1500 && day >= 10) return "Risikoperiode: midt på måneden, fordi afvigelsen er over 1.500 kr. efter den 10.";
+    if (deviation <= -1500) return "Risikoperiode: moderat, fordi afvigelsen er over 1.500 kr.";
 
     if (isFinite(availableNow) && availableNow < 2000 && day >= 20) {
-      return "Risikoperiode: sidst på måneden";
+      return "Risikoperiode: sidst på måneden, fordi rådighedsbeløbet er under 2.000 kr. efter den 20.";
     }
 
     if (isFinite(expectedEnd) && expectedEnd < 0) {
-      return "Risikoperiode: forhøjet";
+      return "Risikoperiode: forhøjet, fordi forventet månedsslut er negativ.";
     }
 
-    return "Risikoperiode: lav";
+    return "Risikoperiode: lav, fordi afvigelsen og forventet slut ikke viser pres.";
   }
 
   async function renderDashRisk(){
@@ -3500,7 +3501,7 @@ if(document.readyState==="loading"){
 
 })();
 
-/* ===== RISK PERIOD PATCH ===== */
+/* ===== RISK PERIOD PATCH - disabled because DASH RISK PATCH gives deterministic reasons ===== */
 
 (function(){
 
@@ -3517,15 +3518,7 @@ function riskPeriod(){
 }
 
 async function renderDashRiskPeriod(){
-
-  const el = document.getElementById("dashRisk");
-
-  if(!el) return;
-
-  const txt = "Risikoperiode: " + riskPeriod();
-
-  el.textContent = txt;
-
+  return;
 }
 
 function installRiskPatch(){
@@ -3639,11 +3632,11 @@ if(document.readyState==="loading"){
       }
 
       if (pace > planned * 1.1){
-        vsEl.textContent = "Tempo vs plan: over plan";
+        vsEl.textContent = "Tempo vs plan: over plan, fordi forbruget pr. dag er mere end 10 % over dagsbudgettet.";
       } else if (pace < planned * 0.9){
-        vsEl.textContent = "Tempo vs plan: under plan";
+        vsEl.textContent = "Tempo vs plan: under plan, fordi forbruget pr. dag er mere end 10 % under dagsbudgettet.";
       } else {
-        vsEl.textContent = "Tempo vs plan: på plan";
+        vsEl.textContent = "Tempo vs plan: på plan, fordi forbruget pr. dag ligger inden for 10 % af dagsbudgettet.";
       }
 
     }catch(e){
