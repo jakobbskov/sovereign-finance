@@ -28,21 +28,7 @@ function getIncomeAlreadyReceived(){
       const x = document.getElementById(id);
       if (x && x.type === "checkbox") return !!x.checked;
     }
-
-const legacyDetails = document.createElement("details");
-legacyDetails.open = false;
-const legacySummary = document.createElement("summary");
-legacySummary.textContent = "Legacy / diagnose (midlertidig)";
-const legacyNote = document.createElement("div");
-legacyNote.className="muted";
-legacyNote.textContent="Denne sektion findes kun til sammenligning med gammel logik. Brug check-in wizarden.";
-legacyDetails.appendChild(legacyNote);
-
-legacyDetails.appendChild(legacySummary);
-container.appendChild(legacyDetails);
-container = legacyDetails;
-
-    // Fallback: find en checkbox der står i samme område som "Legacy check-in (diagnose)" / "Indkomst allerede"
+// Fallback: find en checkbox der står i samme område som "Legacy check-in (diagnose)" / "Indkomst allerede"
     // (Vi gider ikke parse DOM poetisk. Vi tager den simple: første checkbox på siden.)
     const cb = document.querySelector('input[type="checkbox"]');
     if (cb) return !!cb.checked;
@@ -266,7 +252,7 @@ function renderStatusResult(res, opts={}){
   const fb = el("feedback");
   if (!fb) return;
 
-  const headline = opts.headline || "Legacy feedback";
+  const headline = opts.headline || "Status";
   const append = !!opts.append;
 
   try{
@@ -354,7 +340,7 @@ let html = "";
 
 
 
-async function doStatus({silent=false, headline="Legacy feedback"} = {}){
+async function doStatus({silent=false, headline="Status"} = {}){
   const month = getValStr("month","");
   const startBal = getValNum("startBalance", 0);
   const curBal = getValNum("currentBalance", 0);
