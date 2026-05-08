@@ -195,12 +195,11 @@ The repository may contain example files, documentation, source code, Docker con
 
 Current production mode:
 
-    AUTH_MODE=hybrid
+    AUTH_MODE=core
 
-Sovereign Finance accepts two authentication paths in this mode:
+Sovereign Finance requires a valid Sovereign Core Auth session cookie in production core mode.
 
-- a valid Sovereign Core Auth session cookie
-- the local Finance password login as fallback
+Local Finance password login is disabled in core mode and remains available only through `AUTH_MODE=local` or `AUTH_MODE=hybrid` as an explicit rollback/development choice.
 
 The required runtime environment keys are:
 
@@ -215,7 +214,7 @@ The required runtime environment keys are:
 
 The Finance container must receive these values through `docker-compose.yml`, not only through the host `.env` file.
 
-### Expected hybrid auth checks
+### Expected core auth checks
 
 Unauthenticated requests should remain protected:
 
@@ -240,11 +239,11 @@ Expected result:
     auth_source=core
     authenticated=true
 
-The local Finance login must remain available as fallback in hybrid mode.
+The local Finance login must not grant access in core mode. If rollback is required, change `AUTH_MODE` explicitly to `local` or `hybrid`.
 
 ### Auth rollback
 
-If hybrid auth fails in production, rollback is configuration-only:
+If core auth fails in production, rollback is configuration-only:
 
     cd /opt/sovereign-finance
     sudo sed -i 's/^AUTH_MODE=.*/AUTH_MODE=local/' .env
@@ -256,7 +255,7 @@ Then verify:
     curl -sS -o /dev/null -w "whoami_unauth=%{http_code}\n" http://127.0.0.1:5155/api/whoami
     curl -sS -o /dev/null -w "finance_unauth=%{http_code}\n" http://127.0.0.1:5155/api/finance
 
-Hybrid auth controls access to the app. It does not create separate per-user Finance data. See `docs/data-auth-boundary-audit.md`.
+Core auth controls access to the app. It does not create separate per-user Finance data. See `docs/data-auth-boundary-audit.md`.
 
 ## Deployment validation
 
