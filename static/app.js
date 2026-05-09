@@ -5099,20 +5099,59 @@ function detectPressureZone(events){
     return strategies.map(s => "• " + String(s.name || s.id || "Ukendt strategi")).join("\n");
   }
 
+  function renderStrategyDetails(evalData){
+    const results = Array.isArray(evalData?.results) ? evalData.results : [];
+    return results.map(r => {
+      const name = String(r?.name || r?.id || "Strategi");
+      const status = String(r?.status || "ukendt");
+      const reason = String(r?.reason || "").trim();
+      const advice = String(r?.advice || "").trim();
+
+      return [
+        name + ": " + status,
+        reason ? "Fordi: " + reason : "",
+        advice ? "Næste skridt: " + advice : ""
+      ].filter(Boolean).join("\n");
+    }).join("\n\n");
+  }
+
   async function renderHumanStrategySummary(){
     try{
       const finance = await sfHumanApiJson("/api/finance");
       const evalData = finance?.strategy_eval || {};
+      const names = renderStrategyNames(finance);
+      const details = renderStrategyDetails(evalData);
 
-      const listEl = $("dashStrategyList");
-      if (listEl){
-        const names = renderStrategyNames(finance);
-        listEl.style.whiteSpace = "pre-line";
-        listEl.textContent = names ? ("Aktive strategier:\n" + names) : "";
+      const topText = evalData.overall_text ? ("Strategi: " + evalData.overall_text) : "";
+      const adviceText = evalData.overall_advice ? ("Anbefaling: " + evalData.overall_advice) : "";
+      const listText = names ? ("Aktive strategier:\n" + names) : "";
+
+      const oldListEl = $("dashStrategyList");
+      if (oldListEl){
+        oldListEl.style.whiteSpace = "pre-line";
+        oldListEl.textContent = listText;
+      }
+
+      const summaryOverall = $("strategySummaryOverall");
+      const summaryAdvice = $("strategySummaryAdvice");
+      const summaryList = $("strategySummaryList");
+      const summaryDetails = $("strategySummaryDetails");
+
+      if (summaryOverall) summaryOverall.textContent = topText;
+      if (summaryAdvice) summaryAdvice.textContent = adviceText;
+      if (summaryList){
+        summaryList.style.whiteSpace = "pre-line";
+        summaryList.textContent = listText;
+      }
+      if (summaryDetails){
+        summaryDetails.style.whiteSpace = "pre-line";
+        summaryDetails.textContent = details;
       }
     }catch(e){
-      const listEl = $("dashStrategyList");
-      if (listEl) listEl.textContent = "";
+      ["dashStrategyList", "strategySummaryOverall", "strategySummaryAdvice", "strategySummaryList", "strategySummaryDetails"].forEach(id => {
+        const el = $(id);
+        if (el) el.textContent = "";
+      });
     }
   }
 
