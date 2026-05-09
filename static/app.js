@@ -1551,6 +1551,19 @@ function overlay(on){
   }
 
   
+function dashAvailableFromCheckin(fin, fallbackValue){
+  const fallback = Number(fallbackValue);
+  const checkin = fin && typeof fin === "object" ? fin.checkin : null;
+  const balanceNow = checkin ? Number(checkin.balance_now) : NaN;
+  const hasCheckin = !!(checkin && String(checkin.ts || "").trim());
+
+  if (hasCheckin && isFinite(balanceNow)){
+    return balanceNow;
+  }
+
+  return isFinite(fallback) ? fallback : 0;
+}
+
 async function renderDash(){
 
   let fin = null;
@@ -1626,7 +1639,8 @@ try{
       else if (t === "debt") debt += m;
     }
 
-    const available = inc - fx - debt;
+    const budgetAvailable = inc - fx - debt;
+    const available = dashAvailableFromCheckin(finData, budgetAvailable);
 
     if (a) a.textContent = fmtKr(available);
     if (e) e.textContent = fmtKr(available);  // midlertidig: samme som "nu"
@@ -3011,7 +3025,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       else if (it.type === "debt") debt += m;
     }
 
-    const available = income - fixed - debt;
+    const budgetAvailable = income - fixed - debt;
+    const available = dashAvailableFromCheckin(fin, budgetAvailable);
 
     const fmt = (n)=>Math.round(n).toLocaleString("da-DK")+" kr";
 
@@ -3111,7 +3126,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (!out.length){
-      out.push("Forklaring: ingen særskilt afvigelse registreret endnu.");
+      const balanceNow = Number(checkin.balance_now);
+      if (String(checkin.ts || "").trim() && isFinite(balanceNow)){
+        out.push("Seneste check-in: saldo " + fmtKrReason(balanceNow) + " registreret.");
+      } else {
+        out.push("Forklaring: ingen særskilt afvigelse registreret endnu.");
+      }
     }
 
     return out;
