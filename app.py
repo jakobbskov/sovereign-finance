@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory, session, redirec
 import json, os, hmac
 import urllib.request
 import urllib.error
+from urllib.parse import quote
 
 
 from datetime import datetime
@@ -55,6 +56,12 @@ FINANCE_PASSWORD = _require_runtime_secret("FINANCE_PASSWORD")
 
 AUTH_VALIDATE_URL = _env_value("AUTH_VALIDATE_URL") or "https://auth.innosocia.dk/api/auth/validate"
 AUTH_COOKIE_NAME = _env_value("AUTH_COOKIE_NAME") or "sovereign_session"
+AUTH_LOGIN_URL = _env_value("AUTH_LOGIN_URL") or "https://auth.innosocia.dk/login"
+AUTH_RETURN_TO_BASE = (
+    _env_value("AUTH_RETURN_TO_BASE")
+    or _env_value("FINANCE_PUBLIC_URL")
+    or "https://finance.innosocia.dk"
+).rstrip("/")
 
 
 def _auth_mode() -> str:
@@ -273,6 +280,16 @@ def _auth_unavailable_required():
     )
 
 
+def _core_auth_login_redirect():
+    requested_path = request.full_path if request.query_string else request.path
+    if not requested_path.startswith("/"):
+        requested_path = "/" + requested_path
+
+    return_to = AUTH_RETURN_TO_BASE + requested_path
+    location = AUTH_LOGIN_URL + "?return_to=" + quote(return_to, safe="")
+    return redirect(location)
+
+
 def _hybrid_auth_required():
     auth_status, auth_user = get_current_core_auth_user()
 
@@ -297,11 +314,7 @@ def _core_auth_required():
     if request.path.startswith("/api/"):
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
-    return Response(
-        "Sovereign Core Auth-session kræves.",
-        status=401,
-        mimetype="text/plain",
-    )
+    return _core_auth_login_redirect()
 
 
 @app.before_request

@@ -670,6 +670,51 @@ class FinanceCoreAuthModeGuardTest(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.get_json()["error"], "unauthorized")
 
+    def test_core_mode_redirects_page_requests_to_core_auth_login(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("unauthorized", None),
+        ):
+            response = self.client.get(
+                "/",
+                base_url="https://finance.innosocia.dk",
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            response.headers["Location"].startswith(
+                "https://auth.innosocia.dk/login?return_to="
+            )
+        )
+        self.assertIn(
+            "https%3A%2F%2Ffinance.innosocia.dk%2F",
+            response.headers["Location"],
+        )
+
+    def test_core_mode_redirects_login_page_to_core_auth_login(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("unauthorized", None),
+        ):
+            response = self.client.get(
+                "/login",
+                base_url="https://finance.innosocia.dk",
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            response.headers["Location"].startswith(
+                "https://auth.innosocia.dk/login?return_to="
+            )
+        )
+        self.assertIn(
+            "https%3A%2F%2Ffinance.innosocia.dk%2Flogin",
+            response.headers["Location"],
+        )
+
+
     def test_core_mode_returns_503_when_core_auth_unavailable(self):
         with patch.object(
             self.app_module,
