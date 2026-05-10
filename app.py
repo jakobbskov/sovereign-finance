@@ -57,6 +57,7 @@ FINANCE_PASSWORD = _require_runtime_secret("FINANCE_PASSWORD")
 AUTH_VALIDATE_URL = _env_value("AUTH_VALIDATE_URL") or "https://auth.innosocia.dk/api/auth/validate"
 AUTH_COOKIE_NAME = _env_value("AUTH_COOKIE_NAME") or "sovereign_session"
 AUTH_LOGIN_URL = _env_value("AUTH_LOGIN_URL") or "https://auth.innosocia.dk/login"
+AUTH_LOGOUT_URL = _env_value("AUTH_LOGOUT_URL") or "https://auth.innosocia.dk/api/auth/logout"
 AUTH_RETURN_TO_BASE = (
     _env_value("AUTH_RETURN_TO_BASE")
     or _env_value("FINANCE_PUBLIC_URL")
@@ -280,14 +281,37 @@ def _auth_unavailable_required():
     )
 
 
-def _core_auth_login_redirect():
-    requested_path = request.full_path if request.query_string else request.path
+def _core_auth_login_redirect(requested_path=None):
+    if requested_path is None:
+        requested_path = request.full_path if request.query_string else request.path
+
     if not requested_path.startswith("/"):
         requested_path = "/" + requested_path
 
     return_to = AUTH_RETURN_TO_BASE + requested_path
     location = AUTH_LOGIN_URL + "?return_to=" + quote(return_to, safe="")
     return redirect(location)
+
+
+def _logout_core_auth_session():
+    raw_cookie = request.headers.get("Cookie", "").strip()
+    if not _core_auth_cookie_present(raw_cookie):
+        return True
+
+    req = urllib.request.Request(
+        AUTH_LOGOUT_URL,
+        headers={
+            "Cookie": raw_cookie,
+            "User-Agent": "sovereign-finance-api/1.0",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=2):
+            return True
+    except Exception:
+        return False
 
 
 def _hybrid_auth_required():
@@ -372,6 +396,17 @@ def login_post():
 @app.get("/logout")
 def logout():
     session.clear()
+
+    if _auth_mode() == "core":
+        if not _logout_core_auth_session():
+            return Response(
+                "Sovereign Core Auth logout kunne ikke gennemføres.",
+                status=503,
+                mimetype="text/plain",
+            )
+
+        return _core_auth_login_redirect("/")
+
     return redirect("/login")
 
 

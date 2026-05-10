@@ -283,6 +283,7 @@ class FinanceCoreAuthAdapterTest(unittest.TestCase):
         os.environ["FINANCE_PASSWORD"] = "test-password"
         os.environ["COOKIE_SECURE"] = "0"
         os.environ["AUTH_VALIDATE_URL"] = "https://auth.example.test/api/auth/validate"
+        os.environ["AUTH_LOGOUT_URL"] = "https://auth.example.test/api/auth/logout"
         os.environ["AUTH_COOKIE_NAME"] = "sovereign_session"
         os.environ["AUTH_CACHE_TTL_SECONDS"] = "300"
 
@@ -298,6 +299,7 @@ class FinanceCoreAuthAdapterTest(unittest.TestCase):
             "FINANCE_PASSWORD",
             "COOKIE_SECURE",
             "AUTH_VALIDATE_URL",
+            "AUTH_LOGOUT_URL",
             "AUTH_COOKIE_NAME",
             "AUTH_CACHE_TTL_SECONDS",
         ):
@@ -407,6 +409,7 @@ class FinanceHybridAuthModeGuardTest(unittest.TestCase):
         os.environ["COOKIE_SECURE"] = "0"
         os.environ["AUTH_MODE"] = "hybrid"
         os.environ["AUTH_VALIDATE_URL"] = "https://auth.example.test/api/auth/validate"
+        os.environ["AUTH_LOGOUT_URL"] = "https://auth.example.test/api/auth/logout"
         os.environ["AUTH_COOKIE_NAME"] = "sovereign_session"
         os.environ["AUTH_CACHE_TTL_SECONDS"] = "300"
 
@@ -443,6 +446,7 @@ class FinanceHybridAuthModeGuardTest(unittest.TestCase):
             "COOKIE_SECURE",
             "AUTH_MODE",
             "AUTH_VALIDATE_URL",
+            "AUTH_LOGOUT_URL",
             "AUTH_COOKIE_NAME",
             "AUTH_CACHE_TTL_SECONDS",
         ):
@@ -610,6 +614,7 @@ class FinanceCoreAuthModeGuardTest(unittest.TestCase):
         os.environ["COOKIE_SECURE"] = "0"
         os.environ["AUTH_MODE"] = "core"
         os.environ["AUTH_VALIDATE_URL"] = "https://auth.example.test/api/auth/validate"
+        os.environ["AUTH_LOGOUT_URL"] = "https://auth.example.test/api/auth/logout"
         os.environ["AUTH_COOKIE_NAME"] = "sovereign_session"
         os.environ["AUTH_CACHE_TTL_SECONDS"] = "300"
 
@@ -637,6 +642,7 @@ class FinanceCoreAuthModeGuardTest(unittest.TestCase):
             "COOKIE_SECURE",
             "AUTH_MODE",
             "AUTH_VALIDATE_URL",
+            "AUTH_LOGOUT_URL",
             "AUTH_COOKIE_NAME",
             "AUTH_CACHE_TTL_SECONDS",
         ):
@@ -766,6 +772,53 @@ class FinanceCoreAuthModeGuardTest(unittest.TestCase):
         self.assertEqual(payload["authenticated"], True)
         self.assertEqual(payload["auth_source"], "core")
         self.assertEqual(payload["user"]["user_id"], "core-user")
+
+    def test_core_mode_logout_revokes_core_auth_session(self):
+        captured = {}
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return b'{"ok": true}'
+
+        def fake_urlopen(req, timeout=0):
+            captured["url"] = req.full_url
+            captured["method"] = req.get_method()
+            captured["cookie"] = req.headers.get("Cookie")
+            captured["timeout"] = timeout
+            return FakeResponse()
+
+        self.client.set_cookie(
+            "sovereign_session",
+            "test-session-token",
+            domain="finance.innosocia.dk",
+        )
+
+        with patch.object(self.app_module.urllib.request, "urlopen", side_effect=fake_urlopen):
+            response = self.client.get(
+                "/logout",
+                base_url="https://finance.innosocia.dk",
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(captured["url"], "https://auth.example.test/api/auth/logout")
+        self.assertEqual(captured["method"], "POST")
+        self.assertIn("sovereign_session=test-session-token", captured["cookie"])
+        self.assertEqual(captured["timeout"], 2)
+        self.assertTrue(
+            response.headers["Location"].startswith(
+                "https://auth.innosocia.dk/login?return_to="
+            )
+        )
+        self.assertIn(
+            "https%3A%2F%2Ffinance.innosocia.dk%2F",
+            response.headers["Location"],
+        )
 
     def test_core_mode_whoami_ignores_local_session(self):
         with self.client.session_transaction() as session:
