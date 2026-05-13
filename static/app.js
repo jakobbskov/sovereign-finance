@@ -3594,6 +3594,33 @@ if(document.readyState==="loading"){
     return Math.max(1, Math.round(ms / 86400000));
   }
 
+  function computeCheckinSpendingPace(checkins){
+    const source = Array.isArray(checkins) ? checkins : [];
+    const now = new Date();
+    const recent = source.filter(e => {
+      const d = new Date(e && e.ts);
+      const ageDays = (now.getTime() - d.getTime()) / 86400000;
+      return isFinite(ageDays) && ageDays >= 0 && ageDays <= 7;
+    });
+
+    const arr = (recent.length >= 2 ? recent : source)
+      .slice()
+      .filter(e => e && e.ts && isFinite(Number(e.balance_now)))
+      .sort((a,b) => String(a.ts).localeCompare(String(b.ts)));
+
+    if (arr.length < 2) return NaN;
+
+    let totalDrop = 0;
+    for (let i = 1; i < arr.length; i++){
+      const prevBal = Number(arr[i - 1].balance_now);
+      const nextBal = Number(arr[i].balance_now);
+      const drop = prevBal - nextBal;
+      if (isFinite(drop) && drop > 0) totalDrop += drop;
+    }
+
+    return totalDrop / daysBetween(arr[0].ts, arr[arr.length - 1].ts);
+  }
+
   async function fetchTempoEvents(){
     const r = await fetch("/api/events");
     const t = await r.text();
@@ -3618,30 +3645,12 @@ if(document.readyState==="loading"){
         return;
       }
 
-      const now = new Date();
-      const recent = checkins.filter(e => {
-        const d = new Date(e.ts);
-        const ageDays = (now.getTime() - d.getTime()) / 86400000;
-        return ageDays <= 7;
-      });
-
-      const arr = (recent.length >= 2 ? recent : checkins).slice().sort((a,b) => String(a.ts).localeCompare(String(b.ts)));
-      if (arr.length < 2){
+      const pace = computeCheckinSpendingPace(checkins);
+      if (!isFinite(pace)){
         tempoEl.textContent = "Tempo sidste 7 dage: ukendt";
         vsEl.textContent = "Tempo vs plan: ukendt";
         return;
       }
-
-      const first = arr[0];
-      const last = arr[arr.length - 1];
-
-      const firstBal = Number(first.balance_now || 0);
-      const lastBal = Number(last.balance_now || 0);
-      const spanDays = daysBetween(first.ts, last.ts);
-
-      // positivt tal = penge forsvinder pr dag
-      let pace = (firstBal - lastBal) / spanDays;
-      if (pace < 0) pace = 0;
 
       tempoEl.textContent = "Tempo sidste 7 dage: " + fmtKrTempo(pace);
 
