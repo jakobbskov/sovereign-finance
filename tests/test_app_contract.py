@@ -174,6 +174,14 @@ class FinanceLiveEndpointRegressionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"version": 1, "events": []})
 
+    def test_dashboard_tempo_uses_positive_checkin_drops_not_net_window_change(self):
+        app_js = Path("static/app.js").read_text(encoding="utf-8")
+
+        self.assertIn("function computeCheckinSpendingPace", app_js)
+        self.assertIn("totalDrop", app_js)
+        self.assertIn("prevBal - nextBal", app_js)
+        self.assertNotIn("let pace = (firstBal - lastBal) / spanDays;", app_js)
+
     def test_decisions_endpoint_returns_empty_decision_store(self):
         response = self.client.get("/api/decisions")
 
