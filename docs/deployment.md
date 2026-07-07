@@ -115,9 +115,11 @@ See `.env.example`.
 
 ### Sanity checks
 
-    python3 -m py_compile app.py
-    node --check static/app.js
-    python3 -m unittest discover -s tests -v
+Run the repository prestart check from the Git checkout:
+
+    ./prestart_check.sh
+
+This validates `app.py`, `static/app.js`, `static/sf-format.js`, and the unittest contract tests using `.venv/bin/python` when available.
 
 ### Production note
 
@@ -261,10 +263,9 @@ Core auth controls access to the app. It does not create separate per-user Finan
 
 Before copying changes to `/opt/sovereign-finance`, run from the Git checkout:
 
-    python -m py_compile app.py
-    node --check static/app.js
+    ./prestart_check.sh
 
-If endpoint behavior is affected, also run the relevant regression tests when present.
+This must pass before any files are copied to live runtime paths.
 
 After deployment, validate the live app with:
 
