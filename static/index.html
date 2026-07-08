@@ -57,6 +57,57 @@
     .secondary-action{
       background:#fff;
     }
+    .page-header,.dash-layout,.modal-title-row,.wizard-actions{
+      display:flex;
+      flex-wrap:wrap;
+    }
+    .page-header{
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+    }
+    .page-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .link-button{
+      text-decoration:none;
+      border:1px solid #bbb;
+      border-radius:12px;
+      padding:10px 14px;
+      color:inherit;
+      display:inline-block;
+    }
+    .dash-layout{
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+    }
+    .dash-side{
+      min-width:240px;
+      flex:1;
+      max-width:360px;
+    }
+    .modal-title-row{
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .wizard-actions{
+      gap:10px;
+      margin-top:14px;
+    }
+    .mt-6{margin-top:6px}
+    .mt-8{margin-top:8px}
+    .mt-10{margin-top:10px}
+    .mt-12{margin-top:12px}
+    .muted-75{opacity:.75}
+    .muted-8{opacity:.8}
+    .muted-9{opacity:.9}
+    .muted-95{opacity:.95}
+    .pre-line{white-space:pre-line}
 </style>
 
 <style>
@@ -115,11 +166,11 @@
 </script>
 
 <body>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+  <div class="page-header">
       <h1 style="margin:0">Sovereign Finance</h1>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <a id="btnPlatformApps" href="https://innosocia.dk/apps/" style="text-decoration:none;border:1px solid #bbb;border-radius:12px;padding:10px 14px;color:inherit;display:inline-block">Til apps</a>
-        <a id="btnLogout" href="/logout" style="text-decoration:none;border:1px solid #bbb;border-radius:12px;padding:10px 14px;color:inherit;display:inline-block">Log ud</a>
+      <div class="page-actions">
+        <a id="btnPlatformApps" class="link-button" href="https://innosocia.dk/apps/">Til apps</a>
+        <a id="btnLogout" class="link-button" href="/logout">Log ud</a>
       </div>
     </div>
 
@@ -159,43 +210,43 @@ window.addEventListener("unhandledrejection", function(ev){
 </script>
 
 <div class="card" id="dashCard">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+    <div class="dash-layout">
       <div>
         <div class="small" style="opacity:.7">Til rådighed nu</div>
         <div id="dashAvailable" style="font-size:2.2rem;font-weight:700;line-height:1.1">—</div>
-        <div class="small" style="margin-top:6px">
+        <div class="small mt-6">
           <div id="dashExpectedLine"></div>
         </div>
       </div>
-      <div style="min-width:240px;flex:1;max-width:360px">
+      <div class="dash-side">
         <div class="checkin-primary">
           <div class="small">Primær handling</div>
           <h2>Start med check-in</h2>
           <p class="small">Opdatér saldo og ændringer. Så beregner systemet resten ud fra den aktuelle situation.</p>
           <button id="btnWizard" class="primary-action" type="button">Kør check-in</button>
-          <button id="btnToggleAdvanced" class="secondary-action" type="button" style="margin-top:10px">Vis avanceret</button>
+          <button id="btnToggleAdvanced" class="secondary-action mt-10" type="button">Vis avanceret</button>
         </div>
-        <div id="dashMeta" class="small" style="margin-top:8px;opacity:.8">—</div>
-          <div id="dashReason" class="small" style="margin-top:8px;opacity:.9"></div>
-          <div id="dashRisk" class="small" style="margin-top:8px;opacity:.9"></div>
-          <div id="dashDaily" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashPressure" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashDaysLeft" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashTempo" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashTempoVsPlan" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashPressureZone" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashNextPressureZone" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashRhythm" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashRealisticEnd" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashFirstMonth" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashWeather" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashDaysTop" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashStrategyTop" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashStrategyAdvice" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashStrategyList" class="small" style="margin-top:8px;opacity:.95"></div>
+        <div id="dashMeta" class="small mt-8 muted-8">—</div>
+          <div id="dashReason" class="small mt-8 muted-9"></div>
+          <div id="dashRisk" class="small mt-8 muted-9"></div>
+          <div id="dashDaily" class="small mt-8 muted-95"></div>
+          <div id="dashPressure" class="small mt-8 muted-95"></div>
+          <div id="dashDaysLeft" class="small mt-8 muted-95"></div>
+          <div id="dashTempo" class="small mt-8 muted-95"></div>
+          <div id="dashTempoVsPlan" class="small mt-8 muted-95"></div>
+          <div id="dashPressureZone" class="small mt-8 muted-95"></div>
+          <div id="dashNextPressureZone" class="small mt-8 muted-95"></div>
+          <div id="dashRhythm" class="small mt-8 muted-95"></div>
+          <div id="dashRealisticEnd" class="small mt-8 muted-95"></div>
+          <div id="dashFirstMonth" class="small mt-8 muted-95"></div>
+          <div id="dashWeather" class="small mt-8 muted-95"></div>
+          <div id="dashDaysTop" class="small mt-8 muted-95"></div>
+          <div id="dashStrategyTop" class="small mt-8 muted-95"></div>
+          <div id="dashStrategyAdvice" class="small mt-8 muted-95"></div>
+          <div id="dashStrategyList" class="small mt-8 muted-95"></div>
 <div id="dashGuidance" style="margin-top:4px;color:#666"></div>
-          <div id="dashShockType" class="small" style="margin-top:8px;opacity:.95"></div>
-          <div id="dashShockEval" class="small" style="margin-top:8px;opacity:.95"></div>
+          <div id="dashShockType" class="small mt-8 muted-95"></div>
+          <div id="dashShockEval" class="small mt-8 muted-95"></div>
       </div>
     </div>
   </div>
@@ -203,18 +254,18 @@ window.addEventListener("unhandledrejection", function(ev){
   <!-- v0.2: Wizard modal -->
   <div id="wizardOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);padding:18px;z-index:9999">
     <div class="card" style="max-width:720px;margin:24px auto;background:#fff">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div class="modal-title-row">
         <h2 style="margin:0">Check-in</h2>
         <button id="btnWizardClose" type="button" style="width:auto;padding:10px 12px">Luk</button>
       </div>
 
-      <div id="wizStepWrap" style="margin-top:10px">
-        <div class="small" id="wizStepLabel" style="opacity:.8">—</div>
+      <div id="wizStepWrap" class="mt-10">
+        <div class="small muted-8" id="wizStepLabel">—</div>
 
         <div id="wizStep1" class="wizStep">
           <label>Nuværende saldo (kr)</label>
           <input id="wizBalance" type="number" inputmode="numeric" placeholder="Fx 12345" />
-          <div class="small" style="opacity:.75;margin-top:6px">Det eneste tal vi altid skal kende.</div>
+          <div class="small mt-6 muted-75">Det eneste tal vi altid skal kende.</div>
         </div>
 
         <div id="wizStep2" class="wizStep" style="display:none">
@@ -223,7 +274,7 @@ window.addEventListener("unhandledrejection", function(ev){
             <option value="after">Ja (typisk dag 1)</option>
             <option value="before">Nej (før løn)</option>
           </select>
-          <div class="small" style="opacity:.75;margin-top:6px">Det påvirker forventet saldo.</div>
+          <div class="small mt-6 muted-75">Det påvirker forventet saldo.</div>
         </div>
 
         <div id="wizStep3" class="wizStep" style="display:none">
@@ -232,24 +283,24 @@ window.addEventListener("unhandledrejection", function(ev){
             <div><input id="wizSurpriseAmount" type="number" inputmode="numeric" placeholder="Beløb (kr)" /></div>
             <div><input id="wizSurpriseLabel" type="text" placeholder="Label (fx dyrlæge)" /></div>
           </div>
-          <div class="small" style="opacity:.75;margin-top:6px">Hvis beløbet er 0, ignoreres det.</div>
+          <div class="small mt-6 muted-75">Hvis beløbet er 0, ignoreres det.</div>
         </div>
 
         <div id="wizStep4" class="wizStep" style="display:none">
           <label>Ekstra opsparing i dag? (valgfrit)</label>
           <input id="wizExtraSave" type="number" inputmode="numeric" placeholder="Fx 500" />
-          <div class="small" style="opacity:.75;margin-top:6px">Til buffer eller målopsparing.</div>
+          <div class="small mt-6 muted-75">Til buffer eller målopsparing.</div>
         </div>
 
         <div id="wizStep5" class="wizStep" style="display:none">
           <b>Opsummering</b>
-          <div class="small" style="opacity:.8;margin-top:6px" id="wizSummary">—</div>
+          <div class="small mt-6 muted-8" id="wizSummary">—</div>
         </div>
 
-        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <div class="wizard-actions">
           <button id="btnWizBack" type="button" style="width:auto;min-width:120px">Tilbage</button>
           <button id="btnWizNext" type="button" style="width:auto;min-width:160px">Næste</button>
-          <div id="wizStatus" class="small" style="margin-left:auto;opacity:.8;align-self:center">—</div>
+          <div id="wizStatus" class="small muted-8" style="margin-left:auto;align-self:center">—</div>
         </div>
       </div>
     </div>
@@ -259,7 +310,7 @@ window.addEventListener("unhandledrejection", function(ev){
   <p class="small">Feedback-baseret budget. To tal pr. måned. Resten spørger vi om, når det faktisk betyder noget.</p>
   <div class="card adv" id="itemsCard">
     <h2>Budgetposter (Lag 1)</h2>
-    <div class="small" style="opacity:.8;margin-bottom:10px">
+    <div class="small muted-8" style="margin-bottom:10px">
       Én model: type + kategori + beløb + periodicitet. Bruges direkte i beregningerne.
     </div>
 
@@ -299,7 +350,7 @@ window.addEventListener("unhandledrejection", function(ev){
       <select id="itemStartMonth"></select>
 
         <button id="btnAddItem" type="button" style="margin-top:10px">Tilføj</button>
-      <div id="itemsStatus" class="small" style="margin-top:8px"></div>
+      <div id="itemsStatus" class="small mt-8"></div>
     </div>
   </div>
   <div id="legacyBudgetWrap">
@@ -339,7 +390,7 @@ window.addEventListener("unhandledrejection", function(ev){
     </div>
 
     <h3 style="margin:18px 0 6px">Variabel (estimat)</h3>
-    <div class="small" style="opacity:.8">
+    <div class="small muted-8">
       Læses pt. fra seneste month_log → overrides.categories (groceries, fuel, takeaway osv.). Vi gør den pænere i næste trin.
     </div>
 
@@ -356,14 +407,14 @@ window.addEventListener("unhandledrejection", function(ev){
     <label>Vælg strategi</label>
     <select id="strategySelect"></select>
     <button id="btnSelectStrategy" style="margin-top:10px" type="button">Aktivér strategi</button>
-    <div id="activeStrategy" class="small" style="margin-top:8px"></div>
+    <div id="activeStrategy" class="small mt-8"></div>
   </div>
       <section id="strategySummaryCard" class="card" style="margin-top:16px">
         <h2>Din plan lige nu</h2>
-        <div id="strategySummaryOverall" class="small" style="margin-top:8px"></div>
-        <div id="strategySummaryAdvice" class="small" style="margin-top:8px"></div>
-        <div id="strategySummaryList" class="small" style="margin-top:12px; white-space:pre-line"></div>
-        <div id="strategySummaryDetails" class="small" style="margin-top:12px; white-space:pre-line"></div>
+        <div id="strategySummaryOverall" class="small mt-8"></div>
+        <div id="strategySummaryAdvice" class="small mt-8"></div>
+        <div id="strategySummaryList" class="small mt-12 pre-line"></div>
+        <div id="strategySummaryDetails" class="small mt-12 pre-line"></div>
       </section>
 </div>
 
