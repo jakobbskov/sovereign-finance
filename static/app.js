@@ -1544,6 +1544,16 @@ function overlay(on){
     return Math.round(n).toLocaleString("da-DK") + " kr";
   }
 
+  function getDashboardEls(){
+    return {
+      available: $("dashAvailable"),
+      expectedEnd: $("dashExpectedEnd"),
+      deviation: $("dashDeviation"),
+      meta: $("dashMeta"),
+      cashflow: $("dashCashflow")
+    };
+  }
+
   async function apiJson(path){
     const r = await fetch(path);
     if (!r.ok) throw new Error("HTTP " + r.status);
@@ -1594,10 +1604,11 @@ async function renderDash(){
 
     
     const nowAbs = absMonthNow();
-const a = $("dashAvailable");
-    const e = $("dashExpectedEnd");
-    const d = $("dashDeviation");
-    const meta = $("dashMeta");
+    const dashEls = getDashboardEls();
+    const a = dashEls.available;
+    const e = dashEls.expectedEnd;
+    const d = dashEls.deviation;
+    const meta = dashEls.meta;
 
     if (!a && !e && !d && !meta) return;
 
@@ -1625,7 +1636,7 @@ const a = $("dashAvailable");
       }catch(e){}
     });
 try{
-      const cfEl = document.getElementById("dashCashflow");
+      const cfEl = dashEls.cashflow;
       if (cfEl && typeof fmtKr === "function") cfEl.textContent = fmtKr(availableCashflow);
       else if (cfEl) cfEl.textContent = Math.round(availableCashflow).toLocaleString("da-DK") + " kr";
     }catch(e){}
