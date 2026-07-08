@@ -1548,6 +1548,10 @@ function overlay(on){
     return "Indtægt: " + fmtKr(inc) + " · Faste: " + fmtKr(fx) + " · Gæld: " + fmtKr(debt);
   }
 
+  function buildDashboardDeviationText(dev){
+    return (dev === 0) ? "0 kr" : fmtKr(dev);
+  }
+
   function getDashboardEls(){
     return {
       available: $("dashAvailable"),
@@ -1664,7 +1668,7 @@ try{
       const surprise = Number(fin?.checkin?.surprise_amount ?? 0);
       const extra = Number(fin?.checkin?.extra_save ?? 0);
       const devNow = surprise - extra;
-      if (d) d.textContent = (devNow === 0) ? "0 kr" : fmtKr(devNow);
+      if (d) d.textContent = buildDashboardDeviationText(devNow);
     }catch(e){
       
 try{
