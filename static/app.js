@@ -1544,6 +1544,10 @@ function overlay(on){
     return Math.round(n).toLocaleString("da-DK") + " kr";
   }
 
+  function buildDashboardMetaText(inc, fx, debt){
+    return "Indtægt: " + fmtKr(inc) + " · Faste: " + fmtKr(fx) + " · Gæld: " + fmtKr(debt);
+  }
+
   function getDashboardEls(){
     return {
       available: $("dashAvailable"),
@@ -1681,7 +1685,7 @@ try{
 
     // lille meta-linje hvis du vil se input
     if (meta && items.length){
-      meta.textContent = "Indtægt: " + fmtKr(inc) + " · Faste: " + fmtKr(fx) + " · Gæld: " + fmtKr(debt);
+      meta.textContent = buildDashboardMetaText(inc, fx, debt);
     }
   }
 
