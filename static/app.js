@@ -2271,6 +2271,7 @@ function isDueThisMonth(item, monthKey){
   document.addEventListener("DOMContentLoaded", () => {
     const btn = $("btnStatus");
     if (!btn) return;
+    if (window.__sf_btnstatus_single_fix) return;
 
     btn.addEventListener("click", () => {
       // vent lidt så dashboard/feedback når at render
