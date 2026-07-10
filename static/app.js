@@ -1552,6 +1552,10 @@ function overlay(on){
     return (dev === 0) ? "0 kr" : fmtKr(dev);
   }
 
+  function buildDashboardExpectedEndText(available){
+    return fmtKr(available);
+  }
+
   function getDashboardEls(){
     return {
       available: $("dashAvailable"),
@@ -1662,7 +1666,7 @@ try{
     const available = dashAvailableFromCheckin(finData, budgetAvailable);
 
     if (a) a.textContent = fmtKr(available);
-    if (e) e.textContent = fmtKr(available);  // midlertidig: samme som "nu"
+    if (e) e.textContent = buildDashboardExpectedEndText(available);  // midlertidig: samme som "nu"
     try{
       const fin = await getFinance();
       const surprise = Number(fin?.checkin?.surprise_amount ?? 0);
