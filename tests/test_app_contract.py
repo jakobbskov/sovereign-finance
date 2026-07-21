@@ -723,6 +723,42 @@ class FinanceCoreAuthModeGuardTest(unittest.TestCase):
         )
 
 
+    def test_core_mode_rejects_non_admin_core_user_for_api(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {
+                "user_id": "regular-user",
+                "username": "test_initial",
+                "role": "user",
+            }),
+        ):
+            response = self.client.get("/api/finance")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "forbidden")
+
+    def test_core_mode_rejects_non_admin_core_user_for_page(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {
+                "user_id": "regular-user",
+                "username": "test_initial",
+                "role": "user",
+            }),
+        ):
+            response = self.client.get(
+                "/",
+                base_url="https://finance.innosocia.dk",
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn(
+            "admin",
+            response.get_data(as_text=True).lower(),
+        )
+
     def test_core_mode_returns_503_when_core_auth_unavailable(self):
         with patch.object(
             self.app_module,
