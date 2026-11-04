@@ -274,6 +274,15 @@ After deployment, validate the live app with:
 
 If the app is exposed through a reverse proxy, validate the public route separately.
 
+## Proposed Docker ingress restriction (not deployed)
+
+Finance's Compose published port now requires the untracked
+`FINANCE_BIND_IPV4` host-interface address instead of binding to all IPv4 and
+IPv6 interfaces. This is a **bind-address restriction**, not a LAN-source
+allowlist. See [network ingress](network-ingress.md) for preflight, verification,
+rollback, and the separate host-firewall dependency. This change requires an
+approved deployment window; it does not modify the running service by itself.
+
 ## Rollback principle
 
 Rollback must prefer a known working state.
