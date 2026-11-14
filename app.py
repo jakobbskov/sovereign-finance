@@ -290,10 +290,22 @@ def _core_auth_login_redirect():
     return redirect(location)
 
 
+def _core_auth_forbidden():
+    if request.path.startswith("/api/"):
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+    return Response(
+        "Adgang forbudt: Finance kræver administratorrolle.",
+        status=403,
+        mimetype="text/plain",
+    )
+
+
 def _hybrid_auth_required():
     auth_status, auth_user = get_current_core_auth_user()
 
     if auth_status == "ok" and auth_user and auth_user.get("user_id"):
+        if auth_user.get("role") != "admin":
+            return _core_auth_forbidden()
         return None
 
     if auth_status == "unavailable":
@@ -306,6 +318,8 @@ def _core_auth_required():
     auth_status, auth_user = get_current_core_auth_user()
 
     if auth_status == "ok" and auth_user and auth_user.get("user_id"):
+        if auth_user.get("role") != "admin":
+            return _core_auth_forbidden()
         return None
 
     if auth_status == "unavailable":
@@ -428,6 +442,8 @@ def whoami():
         auth_status, auth_user = get_current_core_auth_user()
 
         if auth_status == "ok" and auth_user and auth_user.get("user_id"):
+            if auth_user.get("role") != "admin":
+                return _core_auth_forbidden()
             return jsonify({
                 "ok": True,
                 "authenticated": True,
