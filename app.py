@@ -181,6 +181,21 @@ def get_current_core_auth_user():
     return "ok", user
 
 
+def _core_auth_user_is_admin(auth_user):
+    return str((auth_user or {}).get("role", "")).strip().lower() == "admin"
+
+
+def _core_auth_forbidden_required():
+    if request.path.startswith("/api/"):
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+
+    return Response(
+        "Sovereign Finance kræver admin-adgang, indtil økonomidata er brugeradskilt.",
+        status=403,
+        mimetype="text/plain",
+    )
+
+
 def require_core_auth_user():
     auth_status, auth_user = get_current_core_auth_user()
 
@@ -189,6 +204,9 @@ def require_core_auth_user():
 
     if auth_status != "ok" or not auth_user or not auth_user.get("user_id"):
         return None, (jsonify({"ok": False, "error": "unauthorized"}), 401)
+
+    if not _core_auth_user_is_admin(auth_user):
+        return None, (jsonify({"ok": False, "error": "forbidden"}), 403)
 
     return auth_user, None
 
@@ -290,23 +308,13 @@ def _core_auth_login_redirect():
     return redirect(location)
 
 
-def _core_auth_forbidden():
-    if request.path.startswith("/api/"):
-        return jsonify({"ok": False, "error": "forbidden"}), 403
-    return Response(
-        "Adgang forbudt: Finance kræver administratorrolle.",
-        status=403,
-        mimetype="text/plain",
-    )
-
-
 def _hybrid_auth_required():
     auth_status, auth_user = get_current_core_auth_user()
 
     if auth_status == "ok" and auth_user and auth_user.get("user_id"):
-        if auth_user.get("role") != "admin":
-            return _core_auth_forbidden()
-        return None
+        if _core_auth_user_is_admin(auth_user):
+            return None
+        return _core_auth_forbidden_required()
 
     if auth_status == "unavailable":
         return _auth_unavailable_required()
@@ -318,9 +326,9 @@ def _core_auth_required():
     auth_status, auth_user = get_current_core_auth_user()
 
     if auth_status == "ok" and auth_user and auth_user.get("user_id"):
-        if auth_user.get("role") != "admin":
-            return _core_auth_forbidden()
-        return None
+        if _core_auth_user_is_admin(auth_user):
+            return None
+        return _core_auth_forbidden_required()
 
     if auth_status == "unavailable":
         return _auth_unavailable_required()
@@ -442,8 +450,8 @@ def whoami():
         auth_status, auth_user = get_current_core_auth_user()
 
         if auth_status == "ok" and auth_user and auth_user.get("user_id"):
-            if auth_user.get("role") != "admin":
-                return _core_auth_forbidden()
+            if not _core_auth_user_is_admin(auth_user):
+                return _core_auth_forbidden_required()
             return jsonify({
                 "ok": True,
                 "authenticated": True,

@@ -395,6 +395,26 @@ class FinanceCoreAuthAdapterTest(unittest.TestCase):
         self.assertEqual(status, 503)
         self.assertEqual(response.get_json()["error"], "auth_unavailable")
 
+    def test_require_core_auth_user_preserves_admin_guard(self):
+        for role, expected_status in (("user", 403), ("admin", None)):
+            with self.subTest(role=role):
+                with patch.object(
+                    self.app_module,
+                    "get_current_core_auth_user",
+                    return_value=("ok", {"user_id": "core-user", "role": role}),
+                ):
+                    with self.app_module.app.test_request_context("/api/finance"):
+                        user, error_response = self.app_module.require_core_auth_user()
+
+                if expected_status is None:
+                    self.assertEqual(user["role"], "admin")
+                    self.assertIsNone(error_response)
+                else:
+                    self.assertIsNone(user)
+                    response, status = error_response
+                    self.assertEqual(status, expected_status)
+                    self.assertEqual(response.get_json()["error"], "forbidden")
+
     def test_local_login_guard_still_uses_finance_session(self):
         client = self.app_module.app.test_client()
 
@@ -517,7 +537,7 @@ class FinanceHybridAuthModeGuardTest(unittest.TestCase):
                     if path.startswith("/api/"):
                         self.assertEqual(response.get_json()["error"], "forbidden")
                     else:
-                        self.assertIn("administratorrolle", response.get_data(as_text=True))
+                        self.assertIn("admin-adgang", response.get_data(as_text=True))
 
     def test_hybrid_mode_denies_non_admin_core_auth_write(self):
         with patch.object(
@@ -695,7 +715,7 @@ class FinanceCoreAuthModeGuardTest(unittest.TestCase):
         core_auth_mock.assert_called_once()
 
     def test_core_mode_denies_non_admin_core_auth_for_pages_and_apis(self):
-        for role in ("user", "", None, "Admin"):
+        for role in ("user", "", None, "unknown"):
             with self.subTest(role=role):
                 with patch.object(
                     self.app_module,
@@ -708,7 +728,7 @@ class FinanceCoreAuthModeGuardTest(unittest.TestCase):
                         if path.startswith("/api/"):
                             self.assertEqual(response.get_json()["error"], "forbidden")
                         else:
-                            self.assertIn("administratorrolle", response.get_data(as_text=True))
+                            self.assertIn("admin-adgang", response.get_data(as_text=True))
 
     def test_core_mode_denies_non_admin_core_auth_write(self):
         with patch.object(
