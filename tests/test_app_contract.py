@@ -504,6 +504,33 @@ class FinanceHybridAuthModeGuardTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         core_auth_mock.assert_called_once()
 
+    def test_hybrid_mode_denies_non_admin_core_auth_for_pages_and_apis(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "regular-user", "role": "user"}),
+        ):
+            for path in ("/", "/api/finance", "/api/whoami"):
+                with self.subTest(path=path):
+                    response = self.client.get(path)
+                    self.assertEqual(response.status_code, 403)
+                    if path.startswith("/api/"):
+                        self.assertEqual(response.get_json()["error"], "forbidden")
+                    else:
+                        self.assertIn("administratorrolle", response.get_data(as_text=True))
+
+    def test_hybrid_mode_denies_non_admin_core_auth_write(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "regular-user", "role": "user"}),
+        ):
+            response = self.client.post("/api/finance", json={"version": 99})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "forbidden")
+        self.assertNotEqual(json.loads(Path(self.app_module.FINANCE_PATH).read_text())["version"], 99)
+
     def test_hybrid_mode_rejects_missing_or_invalid_auth(self):
         with patch.object(
             self.app_module,
@@ -666,6 +693,44 @@ class FinanceCoreAuthModeGuardTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         core_auth_mock.assert_called_once()
+
+    def test_core_mode_denies_non_admin_core_auth_for_pages_and_apis(self):
+        for role in ("user", "", None, "Admin"):
+            with self.subTest(role=role):
+                with patch.object(
+                    self.app_module,
+                    "get_current_core_auth_user",
+                    return_value=("ok", {"user_id": "regular-user", "role": role}),
+                ):
+                    for path in ("/", "/login", "/api/finance", "/api/whoami"):
+                        response = self.client.get(path)
+                        self.assertEqual(response.status_code, 403)
+                        if path.startswith("/api/"):
+                            self.assertEqual(response.get_json()["error"], "forbidden")
+                        else:
+                            self.assertIn("administratorrolle", response.get_data(as_text=True))
+
+    def test_core_mode_denies_non_admin_core_auth_write(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "regular-user", "role": "user"}),
+        ):
+            response = self.client.post("/api/finance", json={"version": 99})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "forbidden")
+        self.assertNotEqual(json.loads(Path(self.app_module.FINANCE_PATH).read_text())["version"], 99)
+
+    def test_core_mode_accepts_admin_page_access(self):
+        with patch.object(
+            self.app_module,
+            "get_current_core_auth_user",
+            return_value=("ok", {"user_id": "admin-user", "role": "admin"}),
+        ):
+            response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
 
     def test_core_mode_rejects_missing_or_invalid_auth(self):
         with patch.object(
