@@ -16,4 +16,4 @@ services:
       - /opt/sovereign-finance/static:/app/static:ro
     restart: unless-stopped
     ports:
-      - "5155:5055"
+      - "${FINANCE_BIND_IPV4:?Set FINANCE_BIND_IPV4 to the Beelink LAN IPv4 address}:5155:5055"

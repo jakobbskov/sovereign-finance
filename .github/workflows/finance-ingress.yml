@@ -1,0 +1,61 @@
+name: Finance ingress Compose contract
+
+on:
+  pull_request:
+    paths:
+      - "docker-compose.yml"
+      - ".env.example"
+      - "tests/test_compose_network_binding.py"
+      - ".github/workflows/finance-ingress.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docker-compose.yml"
+      - ".env.example"
+      - "tests/test_compose_network_binding.py"
+      - ".github/workflows/finance-ingress.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  compose-binding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Synthetic CI-only placeholders. Never read deployment credentials.
+      FLASK_SECRET_KEY: synthetic-ci-placeholder
+      FINANCE_PASSWORD: synthetic-ci-placeholder
+      COOKIE_SECURE: "1"
+      SOVEREIGN_FINANCE_ENV: production
+      AUTH_MODE: core
+      AUTH_VALIDATE_URL: https://example.invalid/auth
+      AUTH_COOKIE_NAME: synthetic_session
+      AUTH_CACHE_TTL_SECONDS: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run offline binding regression tests
+        run: |
+          python3 -m py_compile tests/test_compose_network_binding.py
+          python3 -m unittest discover -s tests -p test_compose_network_binding.py -v
+      - name: Confirm missing binding fails, explicit IPv4 is the only publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          if FINANCE_BIND_IPV4='' docker compose -f docker-compose.yml config --quiet >/dev/null 2>&1; then
+            echo "FAIL: missing host binding unexpectedly accepted" >&2
+            exit 1
+          fi
+          FINANCE_BIND_IPV4=192.0.2.10 docker compose -f docker-compose.yml config --format json |
+          python3 -c '
+          import json, sys
+          data=json.load(sys.stdin)
+          ports=data["services"]["sovereign-finance"]["ports"]
+          assert len(ports)==1, ports
+          port=ports[0]
+          assert port["host_ip"]=="192.0.2.10", port
+          assert port["target"]==5055, port
+          assert str(port["published"])=="5155", port
+          assert port.get("protocol","tcp")=="tcp", port
+          print("PASS: Finance publishes one explicit IPv4 host port")
+          '
