@@ -13,10 +13,14 @@ The new mapping requires `FINANCE_BIND_IPV4` in the runtime host's untracked `.e
 ## Deployment preflight (approval required)
 
 1. Confirm the live Compose file corresponds to the reviewed Git branch. Account for any production-only differences before copying files.
+   This older PR changes only Compose. The live Finance `app.py` now includes
+   the newer issue #61 admin guard and `AUTH_MODE=core`; preserve the running
+   image, app file, auth mode and data mount. Never copy an older checkout's
+   `app.py` or rebuild Finance from it as part of the port-binding change.
 2. Establish an independent administrative recovery path. Prepare a timed, automatic rollback **before** changing production bindings or firewall rules.
 3. Back up the live Compose configuration and untracked deployment settings outside Git. Add `FINANCE_BIND_IPV4` to the live untracked `.env`, using the **verified** assigned IPv4 of the host interface reachable from the reverse proxy.
 4. Confirm the value is an actual IPv4 interface address and is neither loopback nor wildcard. Run `docker compose config --quiet`, without printing secrets or a rendered Compose configuration to logs.
-5. In a separately approved deployment window, apply the reviewed Compose configuration using the documented Finance deployment flow. A changed port mapping **can recreate the container**; confirm rollback readiness before proceeding.
+5. In a separately approved deployment window, apply the reviewed Compose configuration using the documented Finance deployment flow with `--no-build`. A changed port mapping **can recreate the container**; confirm rollback readiness before proceeding.
 
 ## Verification after deployment
 
